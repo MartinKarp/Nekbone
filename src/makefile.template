@@ -50,6 +50,9 @@ endif
 # MXM 
 MXM = mxm_std.o
 
+################################################################################
+#clfortran
+BONE += clroutines.o
 # JL Routines ###################################################################
 JO  = jl_
 JL := -DPREFIX=jl_
@@ -84,7 +87,7 @@ L2 = $(G) $(OPT_FLAGS_STD)
 L3 = $(G) $(OPT_FLAGS_STD)
 L4 = $(L3)
 
-FL0   = $(L0) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
+FL0   = $(L0) $(P) $(PPS_F) -I$(CASEDIR) -J$S -I$S -I$(OPT_INCDIR)
 FL2i4 = $(L0)      $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
 FL2   = $(L2) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
 FL3   = $(L3) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
@@ -120,8 +123,12 @@ clean:
 	rm -rf ./obj ${BINNAME}
 
 $(NOBJS_Fbon) : SIZE
+# clfortran       ############################################################################
+clfortran.o :$S/clfortran.f90;		$(F77) -c  -fallow-invalid-boz -J$S $< 
+# opencl fpga     ############################################################################
+$(OBJDIR)/clroutines.o:  $S/clroutines.f90;		$(F77) -c  -fallow-invalid-boz -J$S $<  -o $@ 
 # CORE      ############################################################################
-$(OBJDIR)/cg.o          :$S/cg.f;                       $(F77) -c $(FL4) $< -o $@
+$(OBJDIR)/cg.o          :$S/cg.f $S/clfortran.f90 $S/clroutines.f90;      $(F77) -c $(FL4) $< -o $@ 
 $(OBJDIR)/prox_dssum.o  :$S/prox_dssum.f;               $(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/prox_setup.o  :$S/prox_setup.f;               $(F77) -c $(FL4) $< -o $@
 $(OBJDIR)/hsmg.o        :$S/hsmg.f;                     $(F77) -c $(FL2) $< -o $@
@@ -160,3 +167,4 @@ $(OBJDIR)/$(JO)fcrystal.o        :$(J)/fcrystal.c;        $(CC) -c $(cFL2) $(JL)
 $(OBJDIR)/$(JO)sleep.o		:$(J)/sleep.c;		$(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs.o              :$(J)/gs.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs_local.o        :$(J)/gs_local.c;        $(CC) -c $(cFL2) $(JL) $< -o $@
+

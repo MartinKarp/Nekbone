@@ -51,12 +51,19 @@ c     SET UP and RUN NEKBONE
            call set_f(f,c,n)
 
            if(nid.eq.0) write(6,*)
+#ifdef FPGA          
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+#else
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-
+#endif
            call nekgsync()
 
            call set_timer_flop_cnt(0)
+#ifdef FPGA          
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+#else
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+#endif           
            call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
