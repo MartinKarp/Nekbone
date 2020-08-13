@@ -124,9 +124,9 @@ clean:
 
 $(NOBJS_Fbon) : SIZE
 # clfortran       ############################################################################
-clfortran.o :$S/clfortran.f90;		$(F77) -c  -fallow-invalid-boz -J$S $< 
+clfortran.o :$S/clfortran.f90;		$(F77) -c -J$S $< 
 # opencl fpga     ############################################################################
-$(OBJDIR)/clroutines.o:  $S/clroutines.f90;		$(F77) -c  -fallow-invalid-boz -J$S $<  -o $@ 
+$(OBJDIR)/clroutines.o:  $S/clroutines.f90;		$(F77) -c -J$S $<  -o $@ 
 # CORE      ############################################################################
 $(OBJDIR)/cg.o          :$S/cg.f $S/clfortran.f90 $S/clroutines.f90;      $(F77) -c $(FL4) $< -o $@ 
 $(OBJDIR)/prox_dssum.o  :$S/prox_dssum.f;               $(F77) -c $(FL2) $< -o $@
