@@ -39,11 +39,9 @@ __kernel void post_ax(__global double * restrict x,
     }
 
     int lim = cmask[1];
-    for(unsigned i = 2; i < N; ++i){
-	    if(i < lim+2){
+    for(unsigned i = 2; i < lim+2; ++i){
 	        int k = cmask[i];
             w[k-1] = 0.0;
-	    } 	
     }
 
 
