@@ -30,8 +30,23 @@ __kernel void post_ax(__global double * restrict x,
                          __global const double *c,
                          __global double * restrict rtr,
                          __global const double * rtz1,
+                         __global const double * cmask,
                          int N)
-{  
+{   
+
+    for(unsigned i = 0; i < N; ++i){
+        w[i] += 0.1 * p[i];
+    }
+
+    int lim = cmask[1];
+    for(unsigned i = 2; i < N; ++i){
+	    if(i < lim+2){
+	        int k = cmask[i];
+            w[k-1] = 0.0;
+	    } 	
+    }
+
+
     //  call add2s2(x,p,alpha,n)                                        ! 2n
     //  call add2s2(r,w,alphm,n)                                        ! 2n
     const int M = 8;
@@ -82,19 +97,19 @@ __kernel void post_ax(__global double * restrict x,
     }
     * rtr = res;
   }
-__kernel void pre_dssum(__global double * z,
-                        __global double * r,
-                        __global double * c,
-                        __global double * w,
-                        __global double * p,
-                        __global double * rtz1,
-                        __global double * gxyz,
-                        __global double * dxm1,
-                        __global double * dxtm1,
-                        __global double * ur, 
-                        __global double * us, 
-                        __global double * ut, 
-                        __global double * wk, 
+__kernel void pre_dssum(__global double * restrict z,
+                        __global double * restrict r,
+                        __global double * restrict c,
+                        __global double * restrict w,
+                        __global double * restrict p,
+                        __global double * restrict rtz1,
+                        __global double * restrict gxyz,
+                        __global double * restrict dxm1,
+                        __global double * restrict dxtm1,
+                        __global double * restrict ur, 
+                        __global double * restrict us, 
+                        __global double * restrict ut, 
+                        __global double * restrict wk, 
                         int N,
                         int iter){
 //    call solveM(z,r,n)    ! preconditioner here
@@ -118,28 +133,26 @@ __kernel void pre_dssum(__global double * z,
     for( int i = 0; i < N; ++i){
     	z[i] = r[i];
     }
-
-	for(int i = 0; i < M; ++i) 
-        rtr_copies[i] = 0;
+    for(int i = 0; i < M; ++i) 
+    rtr_copies[i] = 0;
     
-	for( int i = 0; i < N; ++i){
-        double cur = rtr_copies[M-1] +  r[i]*c[i]*z[i];
-        #pragma unroll
+    for( int i = 0; i < N; ++i){
+    	double cur = rtr_copies[M-1] +  r[i]*c[i]*z[i];
+    	#pragma unroll
         for(unsigned j = M-1; j>0; j--){
             rtr_copies[j] = rtr_copies[j-1];
         }
-        rtr_copies[0] = cur; 
+    	rtr_copies[0] = cur; 
     }
     
-	#pragma unroll
+    #pragma unroll
     for(unsigned i = 0; i < M; i++){
         res += rtr_copies[i];
     }
-    
-	* rtz1 = res;
+    * rtz1 = res;
     double beta = res/rtz2;
     
-	if (iter == 1){
+    if (iter == 1){
         beta = 0.0;
     }
 

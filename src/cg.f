@@ -383,7 +383,7 @@ c     User-provided ax(w,z,n) returns  w := Az,
 c
 c     User-provided solveM(z,r,n) ) returns  z := M^-1 r,  
 c
-
+      real, target :: cmask
       common /mymask/cmask(-1:lx1*ly1*lz1*lelt)
       parameter (lt=lx1*ly1*lz1*lelt)
       real ur(lt),us(lt),ut(lt),wk(lt)
@@ -396,7 +396,7 @@ c   Target necessary for OpenCL
 
       integer(c_intptr_t), target ::
      $ cl_x,cl_f,cl_r1,cl_w,cl_p,cl_z,cl_g,cl_c,cl_rtr, cl_rtz1,
-     $ cl_dxm1, cl_dxtm1, cl_ur, cl_us, cl_ut, cl_wk 
+     $ cl_dxm1, cl_dxtm1, cl_ur, cl_us, cl_ut, cl_wk, cl_cmask
       integer, target :: n, iter
       character*1 ans
 c OPencl things
@@ -421,7 +421,7 @@ c OPencl things
       kernel_name = "post_ax"
       kernel_name2 = "pre_dssum"
       idevice = 1
-      iplatform = 1
+      iplatform = 2
       byte_size= 8_8 * int(n,8)
       g_size= 8_8 * int(6*n,8)
       element_size = 8_8*int(lx1*ly1,8)
@@ -478,6 +478,9 @@ c Init arrays
       cl_z = clCreateBuffer(context, 
      $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
+      cl_cmask = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      
       cl_g = clCreateBuffer(context, 
      $      CL_MEM_READ_WRITE,g_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
@@ -523,7 +526,9 @@ c Init arrays
       if (err.ne.0) stop 'clSetKernelArg'
       err=clSetKernelArg(kernel,6,sizeof(8_8),C_LOC(cl_rtz1))
       if (err.ne.0) stop 'clSetKernelArg'
-      err=clSetKernelArg(kernel,7,sizeof(8_4),C_LOC(n))
+      err=clSetKernelArg(kernel,7,sizeof(8_8),C_LOC(cl_cmask))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(kernel,8,sizeof(8_4),C_LOC(n))
       if (err.ne.0) stop 'clSetKernelArg'
     
       err=clSetKernelArg(kernel2,0,sizeof(8_8),C_LOC(cl_z))
@@ -591,6 +596,9 @@ c     set machine tolerances
       err=clEnqueueWriteBuffer(cmd_queue,cl_p,CL_TRUE,0_8,
      $    byte_size,C_LOC(p), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_cmask,CL_TRUE,0_8,
+     $    byte_size,C_LOC(cmask), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
       err=clEnqueueWriteBuffer(cmd_queue,cl_g,CL_TRUE,0_8,
      $    g_size,C_LOC(g), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
@@ -616,9 +624,6 @@ c     call tester(z,r,n)
      $    0,C_NULL_PTR,C_NULL_PTR)
          if (err.ne.0) stop 'clEnqueueEnqueueTask'
         
-         err = clEnqueueReadBuffer(cmd_queue,cl_p,CL_TRUE,
-     $      0_8,byte_size,C_LOC(p),0,C_NULL_PTR,C_NULL_PTR)
-         if (err.ne.0) stop 'clEnqueueReadBuffer'
          err = clEnqueueReadBuffer(cmd_queue,cl_w,CL_TRUE,
      $      0_8,byte_size,C_LOC(w),0,C_NULL_PTR,C_NULL_PTR)
          if (err.ne.0) stop 'clEnqueueReadBuffer'
@@ -629,15 +634,15 @@ c     call tester(z,r,n)
  
          call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
                                                               !            L
-         call add2s2(w,p,.1,n)   !2n
-         call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
+         err=clEnqueueWriteBuffer(cmd_queue,cl_w,CL_TRUE,0_8,
+     $    byte_size,C_LOC(w), 0,C_NULL_PTR,C_NULL_PTR)
+         if (err.ne.0) stop 'clEnqueueWriteBuffer'
+         !call add2s2(w,p,.1,n)   !2n
+         !call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
    
          nxyz=nx1*ny1*nz1
          flop_a = flop_a + (19*nxyz+12*nx1*nxyz)*nelt
 
-         err=clEnqueueWriteBuffer(cmd_queue,cl_w,CL_TRUE,0_8,
-     $    byte_size,C_LOC(w), 0,C_NULL_PTR,C_NULL_PTR)
-         if (err.ne.0) stop 'clEnqueueWriteBuffer'
 c         err=clEnqueueNDRangeKernel(cmd_queue,kernel,
 c     $    1,C_NULL_PTR,C_LOC(globalsize),C_NULL_PTR,
 c     $    0,C_NULL_PTR,C_NULL_PTR)
