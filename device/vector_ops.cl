@@ -24,13 +24,13 @@
 
  // ACL kernel for after Ax subroutine
 __kernel void post_ax(__global double * restrict x, 
-                         __global const double *p,
+                         __global const double * restrict p,
                          __global double * restrict r,
-                         __global double *w,
-                         __global const double *c,
+                         __global double * restrict w,
+                         __global const double * restrict c,
                          __global double * restrict rtr,
-                         __global const double * rtz1,
-                         __global const double * cmask,
+                         __global const double * restrict rtz1,
+                         __global const double * restrict cmask,
                          int N)
 {   
 
