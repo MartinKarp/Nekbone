@@ -1,7 +1,6 @@
 #define LX1 10
 #define LY1 10
 #define LZ1 10
-#define M 12
 // Copyright (C) 2013-2018 Altera Corporation, San Jose, California, USA. All rights reserved.
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
@@ -34,6 +33,7 @@ __kernel void post_ax(__global double * restrict x,
                          __global const double * restrict cmask,
                          int N)
 {   
+
     for(unsigned i = 0; i < N; ++i){
         w[i] += 0.1 * p[i];
     }
@@ -47,6 +47,7 @@ __kernel void post_ax(__global double * restrict x,
 
     //  call add2s2(x,p,alpha,n)                                        ! 2n
     //  call add2s2(r,w,alphm,n)                                        ! 2n
+    const int M = 8;
     double rtr_copies[M];
     double res = 0.0;
 
@@ -74,10 +75,84 @@ __kernel void post_ax(__global double * restrict x,
 
     for(int i = 0; i < M; ++i) 
         rtr_copies[i] = 0;
+    
     for( int i = 0; i < N; ++i){
     	x[i] = x[i] + alpha * p[i];
     	r[i] = r[i] + alphm * w[i];
     }   
+    
+    for( int i = 0; i < N; ++i){
+        double cur = rtr_copies[M-1] +  r[i]*r[i]*c[i];
+        #pragma unroll
+        for(unsigned j = M-1; j>0; j--){
+            rtr_copies[j] = rtr_copies[j-1];
+        }
+        rtr_copies[0] = cur;
+    }
+    #pragma unroll
+    for(unsigned i = 0; i < M; i++){
+        res += rtr_copies[i];
+    }
+    * rtr = res;
+  }
+_kernel void post_ax(__global double * restrict x, 
+                         __global const double * restrict p,
+                         __global double * restrict r,
+                         __global double * restrict w,
+                         __global const double * restrict c,
+                         __global double * restrict rtr,
+                         __global const double * restrict rtz1,
+                         __global const double * restrict cmask,
+                         int N)
+{   
+
+    for(unsigned i = 0; i < N; ++i){
+        w[i] += 0.1 * p[i];
+    }
+
+    int lim = cmask[1];
+    for(unsigned i = 2; i < lim+2; ++i){
+	        int k = cmask[i];
+            w[k-1] = 0.0;
+    }
+
+
+    //  call add2s2(x,p,alpha,n)                                        ! 2n
+    //  call add2s2(r,w,alphm,n)                                        ! 2n
+    const int M = 8;
+    double rtr_copies[M];
+    double res = 0.0;
+
+//  pap=glsc3(w,c,p,n)   
+    
+    for(int i = 0; i < M; ++i) 
+        rtr_copies[i] = 0;
+    for( int i = 0; i < N; ++i){
+        double cur = rtr_copies[M-1] +  w[i]*p[i]*c[i];
+        #pragma unroll
+        for(unsigned j = M-1; j>0; j--){
+            rtr_copies[j] = rtr_copies[j-1];
+        }
+        rtr_copies[0] = cur; 
+    }
+    #pragma unroll
+    for(unsigned i = 0; i < M; i++){
+        res += rtr_copies[i];
+    }
+
+    double pap = res;
+    double alpha = rtz1[0]/pap;
+    double alphm = -1.*alpha; 
+    res = 0.0;
+
+    for(int i = 0; i < M; ++i) 
+        rtr_copies[i] = 0;
+    
+    for( int i = 0; i < N; ++i){
+    	x[i] = x[i] + alpha * p[i];
+    	r[i] = r[i] + alphm * w[i];
+    }   
+    
     for( int i = 0; i < N; ++i){
         double cur = rtr_copies[M-1] +  r[i]*r[i]*c[i];
         #pragma unroll
@@ -116,6 +191,7 @@ __kernel void pre_dssum(__global double * restrict z,
 //    if (iter.eq.1) beta=0.0
 //    call add2s1(p,z,beta,n)                                         ! 2n
   
+    const int M = 10;
     double rtr_copies[M];
     double rtz2 = rtz1[0]; 
     double res = 0.0;
@@ -123,6 +199,7 @@ __kernel void pre_dssum(__global double * restrict z,
     // double us[M*M*M];
     // double ut[M*M*M];
     // double wk[M*M*M];
+    
     for( int i = 0; i < N; ++i){
     	z[i] = r[i];
     }
@@ -148,6 +225,7 @@ __kernel void pre_dssum(__global double * restrict z,
     if (iter == 1){
         beta = 0.0;
     }
+
     for( int i = 0; i < N; ++i){
         p[i] = z[i] + beta * p[i];
         //printf("%.10e \n",p[i]);
@@ -196,7 +274,6 @@ __kernel void pre_dssum(__global double * restrict z,
                     double rtmp = 0.0;
                     double stmp = 0.0;
                     double ttmp = 0.0;
-                    #pragma unroll
                     for (unsigned l = 0; l<LX1; l++){
                       rtmp += shdxm1[i+l*LX1] * shu[l+j*LX1 +k*LX1*LY1];
                       stmp += shdxm1[j+l*LX1] * shu[i+l*LX1 + k*LX1*LY1];
@@ -221,11 +298,10 @@ __kernel void pre_dssum(__global double * restrict z,
                     int ij = i + j*LX1;
                     int ijk = ij + k*LX1*LY1;
                     double wijke = 0.0;
-                    #pragma unroll
                     for (unsigned l = 0; l<LX1; l++){
-                      wijke += shdxm1[l + i*LX1] * shur[l+j*LX1+k*LX1*LY1];
-                      wijke += shdxm1[l + j*LX1] * shus[i+l*LX1+k*LX1*LY1];
-                      wijke += shdxm1[l + k*LX1] * shut[i+j*LX1+l*LX1*LY1];
+                      wijke += dxm1[l + i*LX1] * shur[l+j*LX1+k*LX1*LY1];
+                      wijke += dxm1[l + j*LX1] * shus[i+l*LX1+k*LX1*LY1];
+                      wijke += dxm1[l + k*LX1] * shut[i+j*LX1+l*LX1*LY1];
                     }
                     //printf("%f\n",wijke-w[ijk+ele]);
                     w[ijk + ele] = wijke;
