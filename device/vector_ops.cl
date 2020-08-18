@@ -33,7 +33,8 @@ __kernel void post_ax(__global double * restrict x,
                          __global const double * restrict rtz1,
                          __global const double * restrict cmask,
                          int N)
-{   
+{  
+    #pragma unroll 16
     for(unsigned i = 0; i < N; ++i){
         w[i] += 0.1 * p[i];
     }
@@ -74,6 +75,7 @@ __kernel void post_ax(__global double * restrict x,
 
     for(int i = 0; i < M; ++i) 
         rtr_copies[i] = 0;
+    #pragma unroll 8
     for( int i = 0; i < N; ++i){
     	x[i] = x[i] + alpha * p[i];
     	r[i] = r[i] + alphm * w[i];
@@ -123,6 +125,7 @@ __kernel void pre_dssum(__global double * restrict z,
     // double us[M*M*M];
     // double ut[M*M*M];
     // double wk[M*M*M];
+    #pragma unroll 16
     for( int i = 0; i < N; ++i){
     	z[i] = r[i];
     }
@@ -148,6 +151,7 @@ __kernel void pre_dssum(__global double * restrict z,
     if (iter == 1){
         beta = 0.0;
     }
+    #pragma unroll 16
     for( int i = 0; i < N; ++i){
         p[i] = z[i] + beta * p[i];
         //printf("%.10e \n",p[i]);
@@ -163,16 +167,17 @@ __kernel void pre_dssum(__global double * restrict z,
         }
     }
     
-    local double shu[LX1*LY1*LZ1];
-    local double shur[LX1*LY1*LZ1];
-    local double shus[LX1*LY1*LZ1];
-    local double shut[LX1*LY1*LZ1];
     //printf("%.8f\n",shdxm1[5]);
     for(unsigned e = 0; e < N/(LX1*LY1*LZ1); e++){
+        double shu[LX1*LY1*LZ1];
+        double shur[LX1*LY1*LZ1];
+        double shus[LX1*LY1*LZ1];
+        double shut[LX1*LY1*LZ1];
         
         int ele = e*LX1*LY1*LZ1;
         for(unsigned k=0; k<LZ1; ++k){
             for(unsigned j = 0; j < LX1; j++){
+                #pragma unroll
                 for(unsigned i = 0; i < LX1; i++){
                     int ij = i + j*LX1;
                     int ijk = ij + k*LX1*LY1;
@@ -184,6 +189,7 @@ __kernel void pre_dssum(__global double * restrict z,
         //printf("%f %f %f %f %f %f\n",gxyz[N*6-6],gxyz[N*6-5],gxyz[N*6-4],gxyz[N*6-3],gxyz[N*6-2],gxyz[N*6-1]);
         for (unsigned k=0; k<LZ1; ++k){
             for(unsigned j = 0; j < LY1; j++){
+                #pragma unroll 2
                 for(unsigned i = 0; i < LX1; i++){
                     int ij = i + j*LX1;
                     int ijk = ij + k*LX1*LY1;
@@ -217,6 +223,7 @@ __kernel void pre_dssum(__global double * restrict z,
         }
         for (unsigned k=0; k<LZ1; ++k){
             for(unsigned j = 0; j < LY1; j++){
+                #pragma unroll 2 
                 for(unsigned i = 0; i < LX1; i++){
                     int ij = i + j*LX1;
                     int ijk = ij + k*LX1*LY1;
