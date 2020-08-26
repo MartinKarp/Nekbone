@@ -7,7 +7,7 @@ __kernel void ax(__global double * restrict w,
                         __global const double * restrict dxm1,
                         int N){
     
-    const double shdxm1[LX1*LY1];
+    double shdxm1[LX1*LY1];
     for(unsigned j = 0; j < LX1; j++){
         for(unsigned i = 0; i < LX1; i++){
             shdxm1[i + j*LX1] = dxm1[i + j*LX1];    
