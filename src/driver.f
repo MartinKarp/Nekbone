@@ -44,15 +44,15 @@ c     SET UP and RUN NEKBONE
 
            call proxy_setup(ah,bh,ch,dh,zh,wh,g) 
            call h1mg_setup
-
-           niter = 100
+           print *, 'lel'
+           niter = 10000
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
 
            if(nid.eq.0) write(6,*)
 #ifdef FPGA          
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
 #else
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 #endif
@@ -60,7 +60,7 @@ c     SET UP and RUN NEKBONE
 
            call set_timer_flop_cnt(0)
 #ifdef FPGA          
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
 #else
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 #endif           
