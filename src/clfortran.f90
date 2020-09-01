@@ -34,6 +34,17 @@
 module clfortran
     USE ISO_C_BINDING
     implicit none
+   
+    ! INTEL MEM FLAGS! Martin Karp 31st August 2020
+    integer(c_int64_t), parameter :: CL_CHANNEL_AUTO_INTELFPGA      = b'0000000000000000000'
+    integer(c_int64_t), parameter :: CL_CHANNEL_1_INTELFPGA         = b'0010000000000000000'
+    integer(c_int64_t), parameter :: CL_CHANNEL_2_INTELFPGA         = b'0100000000000000000'
+    integer(c_int64_t), parameter :: CL_CHANNEL_3_INTELFPGA         = b'0110000000000000000'
+    integer(c_int64_t), parameter :: CL_CHANNEL_4_INTELFPGA         = b'1000000000000000000'
+    integer(c_int64_t), parameter :: CL_CHANNEL_5_INTELFPGA         = b'1010000000000000000'
+    integer(c_int64_t), parameter :: CL_CHANNEL_6_INTELFPGA         = b'1100000000000000000'
+    integer(c_int64_t), parameter :: CL_CHANNEL_7_INTELFPGA         = b'1110000000000000000'
+
 
     ! Error Codes
     integer(c_int32_t), parameter :: CL_SUCCESS                                   =  0
@@ -253,6 +264,8 @@ module clfortran
     integer(c_int64_t), parameter :: CL_MEM_HOST_WRITE_ONLY                     = b'0010000000'
     integer(c_int64_t), parameter :: CL_MEM_HOST_READ_ONLY                      = b'0100000000'
     integer(c_int64_t), parameter :: CL_MEM_HOST_NO_ACCESS                      = b'1000000000'
+   
+    ! INTEL MEM FLAGS! Martin Karp 
 
     ! cl_buffer_create_type
     integer(c_int32_t), parameter :: CL_BUFFER_CREATE_TYPE_REGION               = Z'1220'
