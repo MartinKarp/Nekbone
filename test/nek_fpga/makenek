@@ -27,7 +27,7 @@ CC="mpicc"
 #USR="foo.o"
 
 # linking flags
-USR_LFLAGS="-L/usr/local/cuda-11.0/lib64 -lOpenCL"
+USR_LFLAGS="-L/cm/shared/opt/intelFPGA_pro/20.2.0/hld/host/linux64/lib"
 
 # generic compiler flags
 G="-cpp -DFPGA -L/usr/lib64 -lOpenCL"
