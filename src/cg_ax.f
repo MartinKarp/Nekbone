@@ -477,8 +477,6 @@ c Init arrays
       if (err.ne.0) stop 'clSetKernelArg'
       err=clSetKernelArg(ax_kernel,4,sizeof(8_4),C_LOC(n))
       if (err.ne.0) stop 'clSetKernelArg'
-      err=clSetKernelArg(ax_kernel,5,sizeof(8_4),C_LOC(iter))
-      if (err.ne.0) stop 'clSetKernelArg'
       
       globalsize=int(n,8)
        
