@@ -8,10 +8,6 @@ __kernel void ax(__global double * restrict w,
                         __global const double * restrict dxm1,
                         int N){
 
-    double shdxm1[LX1*LY1];
-    #pragma unroll
-    for(unsigned ij=0; ij<LX1*LY1; ++ij)
-        shdxm1[ij] = dxm1[ij];
 
     for(unsigned ele = 0; ele < N; ele += LX1*LY1*LZ1){
         double shur[LX1*LY1*LZ1];
@@ -19,8 +15,12 @@ __kernel void ax(__global double * restrict w,
         double shut[LX1*LY1*LZ1];
         double shw[LX1*LY1*LZ1];
     	double shu[LX1*LY1*LZ1];
+        double shdxm1[LX1*LY1];
+        #pragma unroll
+        for(unsigned ij=0; ij<LX1*LY1; ++ij)
+            shdxm1[ij] = dxm1[ij];
         
-        #pragma unroll 100
+        #pragma unroll 32
         for(unsigned ijk=0; ijk<LX1*LY1*LZ1; ++ijk){
             shu[ijk] = p[ijk + ele];
             //shg[0+6*ijk] = gxyz[0+6*ijk+ele*6];
@@ -46,7 +46,6 @@ __kernel void ax(__global double * restrict w,
                     double rtmp = 0.0;
                     double stmp = 0.0;
                     double ttmp = 0.0;
-                    #pragma unroll
                     for (unsigned l = 0; l<LX1; l++){
                       rtmp += shdxm1[i+l*LX1] * shu[l+j*LX1 +k*LX1*LY1];
                       stmp += shdxm1[j+l*LX1] * shu[i+l*LX1 + k*LX1*LY1];
@@ -72,7 +71,6 @@ __kernel void ax(__global double * restrict w,
                     int ijk = ij + k*LX1*LY1;
                     
                     double wijke = 0.0;
-                    #pragma unroll
                     for(unsigned l = 0; l<LX1; l++){
                         wijke += shdxm1[l + i*LX1] * shur[l+j*LX1+k*LX1*LY1];
                         wijke += shdxm1[l + j*LX1] * shus[i+l*LX1+k*LX1*LY1];
@@ -83,7 +81,7 @@ __kernel void ax(__global double * restrict w,
             }
         }
 
-        #pragma unroll 100 
+        #pragma unroll 32
         for(unsigned ijk=0; ijk<LX1*LY1*LZ1; ++ijk)
             w[ijk + ele] = shw[ijk];
     }
