@@ -614,7 +614,6 @@ c        if (nid.eq.0.and.mod(iter,100).eq.0)
 c    $      write(6,6) iter,rnorm,alpha,beta,pap
 !    6    format('cg:',i4,1p4e12.4)
 c        if (rtr.le.rlim2) goto 1001
-        print *, iter
       enddo
 
  1001 continue
