@@ -8,19 +8,20 @@ __kernel void ax(__global double * restrict w,
                         __global const double * restrict dxm1,
                         int N){
 
-    double __attribute__((register)) shdxm1[128];
-    #pragma unroll
-    for(unsigned ij=0; ij<LX1*LY1; ++ij)
-        shdxm1[ij] = dxm1[ij];
     #pragma speculated_iterations 1000
+    #pragma max_concurrency 128
     for(unsigned ele = 0; ele < N; ele += LX1*LY1*LZ1){
-        double __attribute__((private_copies(40))) shur[LX1*LY1*LZ1];
-        double __attribute__((private_copies(40))) shus[LX1*LY1*LZ1];
-        double __attribute__((private_copies(40))) shut[LX1*LY1*LZ1];
-        double __attribute__((private_copies(40))) shw[LX1*LY1*LZ1];
-    	double __attribute__((private_copies(40))) shu[LX1*LY1*LZ1];
+        double  shur[LX1*LY1*LZ1];
+        double  shus[LX1*LY1*LZ1];
+        double  shut[LX1*LY1*LZ1];
+        double  shw[LX1*LY1*LZ1];
+    	double  shu[LX1*LY1*LZ1];
+        double  shdxm1[128];
+        #pragma unroll
+        for(unsigned ij=0; ij<LX1*LY1; ++ij)
+            shdxm1[ij] = dxm1[ij];
         
-        #pragma unroll 100
+        #pragma unroll 32
         for(unsigned ijk=0; ijk<LX1*LY1*LZ1; ++ijk){
             shu[ijk] = p[ijk + ele];
             //shg[0+6*ijk] = gxyz[0+6*ijk+ele*6];
@@ -47,7 +48,6 @@ __kernel void ax(__global double * restrict w,
                     double rtmp = 0.0;
                     double stmp = 0.0;
                     double ttmp = 0.0;
-                    #pragma unroll
                     for (unsigned l = 0; l<LX1; l++){
                       rtmp += shdxm1[i+l*LX1] * shu[l+j*LX1 +k*LX1*LY1];
                       stmp += shdxm1[j+l*LX1] * shu[i+l*LX1 + k*LX1*LY1];
@@ -74,7 +74,6 @@ __kernel void ax(__global double * restrict w,
                     int ijk = ij + k*LX1*LY1;
                     
                     double wijke = 0.0;
-                    #pragma unroll
                     for(unsigned l = 0; l<LX1; l++){
                         wijke += shdxm1[l + i*LX1] * shur[l+j*LX1+k*LX1*LY1];
                         wijke += shdxm1[l + j*LX1] * shus[i+l*LX1+k*LX1*LY1];
@@ -85,7 +84,7 @@ __kernel void ax(__global double * restrict w,
             }
         }
 
-        #pragma unroll 100 
+        #pragma unroll 32 
         for(unsigned ijk=0; ijk<LX1*LY1*LZ1; ++ijk)
             w[ijk + ele] = shw[ijk];
     }
