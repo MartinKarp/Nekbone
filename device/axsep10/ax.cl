@@ -2,7 +2,7 @@
 #define LY1 10
 #define LZ1 10
 
-
+__attribute__((scheduler_target_fmax_mhz(300)))
 __kernel void ax(__global double * restrict w,
                         __global const double * restrict p,
                         __global const double * restrict g1,
