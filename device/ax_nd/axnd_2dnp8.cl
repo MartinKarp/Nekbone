@@ -1,6 +1,6 @@
-#define LX1 10
-#define LY1 10
-#define LZ1 10
+#define LX1 8
+#define LY1 8
+#define LZ1 8
 __attribute__((num_simd_work_items(2)))
 __attribute__((num_compute_units(1)))
 __attribute__((reqd_work_group_size(LX1,LY1,1)))
