@@ -33,8 +33,8 @@ __kernel void ax(__global double * restrict w,
     int ele = e*LX1*LY1*LZ1;
 
     shdxm1[ij] = dxm1[ij];
-    shdxtm1[ij] = dxm1[ij];
-    shu[ijk] = p[ijk];   
+    shdxtm1[ij] = dxtm1[ij];
+    shu[ijk] = __burst_coalesced_load(&p[ijk]);   
 // Pform the strided accesses.  Each thread in the block proceeds in
 // lkstep.
     barrier(CLK_LOCAL_MEM_FENCE); 
@@ -49,9 +49,9 @@ __kernel void ax(__global double * restrict w,
     double stmp = 0.0;
     #pragma unroll
     for (unsigned l = 0; l<LX1; l++){
-      rtmp += shdxtm1[l+i*LX1] * shu[l+j*LX1];
-      ttmp += shdxtm1[l+k*LX1] * shu[l];
-      stmp += shdxtm1[l+j*LX1] * shu[i+l*LX1];
+        rtmp += shdxtm1[l+i*LX1] * shu[l+j*LX1 +k*LX1*LY1];
+        stmp += shdxtm1[l+j*LX1] * shu[i+l*LX1 + k*LX1*LY1];
+        ttmp += shdxtm1[l+k*LX1] * shu[ij + l*LX1*LY1];
     }
     shur[ijk] = G00*rtmp
              + G01*stmp
