@@ -1,6 +1,6 @@
-#define LX1 10 
-#define LY1 10 
-#define LZ1 10 
+#define LX1 4 
+#define LY1 4 
+#define LZ1 4 
 
 __attribute__((scheduler_target_fmax_mhz(300)))
 __kernel void ax(__global double * restrict w,
@@ -49,7 +49,7 @@ __kernel void ax(__global double * restrict w,
         #pragma ii 1
         for (unsigned k=0; k<LZ1; ++k){
             for(unsigned j = 0; j < LY1; j++){
-                #pragma unroll 2
+                #pragma unroll
                 for(unsigned i = 0; i < LX1; i++){
                     int ij = i + j*LX1;
                     int ijk = ij + k*LX1*LY1;
@@ -84,7 +84,7 @@ __kernel void ax(__global double * restrict w,
         #pragma ii 1
         for (unsigned k=0; k<LZ1; ++k){
             for(unsigned j = 0; j < LY1; j++){
-                #pragma unroll 2
+                #pragma unroll
                 for(unsigned i = 0; i < LX1; i++){
                     int ij = i + j*LX1;
                     int ijk = ij + k*LX1*LY1;
