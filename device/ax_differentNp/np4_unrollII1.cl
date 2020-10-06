@@ -14,6 +14,14 @@ __kernel void ax(__global double * restrict w,
                         __global const double * restrict dxm1,
                         __global const double * restrict dxtm1,
                         int N){
+    double shdxm1[LX1*LY1];
+    double shdxtm1[LX1*LY1];
+    #pragma unroll 32
+    for(unsigned ij=0; ij<LX1*LY1; ++ij){
+        shdxm1[ij] = dxm1[ij];
+        shdxtm1[ij] = dxtm1[ij];
+    }
+
 
     for(unsigned ele = 0; ele < N; ele += LX1*LY1*LZ1){
         double shur[LX1*LY1*LZ1];
@@ -27,14 +35,6 @@ __kernel void ax(__global double * restrict w,
         double shg5[LX1*LY1*LZ1];
         double shg6[LX1*LY1*LZ1];
         double shu[LX1*LY1*LZ1];
-        double shdxm1[LX1*LY1];
-        double shdxtm1[LX1*LY1];
-        #pragma unroll 32
-        for(unsigned ij=0; ij<LX1*LY1; ++ij){
-            shdxm1[ij] = dxm1[ij];
-            shdxtm1[ij] = dxtm1[ij];
-        }
-
         #pragma unroll 32
         for(unsigned ijk=0; ijk<LX1*LY1*LZ1; ++ijk){
             shu[ijk] = p[ijk + ele];
@@ -48,6 +48,7 @@ __kernel void ax(__global double * restrict w,
         #pragma loop_coalesce
         #pragma ii 1
         for (unsigned k=0; k<LZ1; ++k){
+                #pragma unroll 2
             for(unsigned j = 0; j < LY1; j++){
                 #pragma unroll
                 for(unsigned i = 0; i < LX1; i++){
@@ -83,6 +84,7 @@ __kernel void ax(__global double * restrict w,
         #pragma loop_coalesce 
         #pragma ii 1
         for (unsigned k=0; k<LZ1; ++k){
+                #pragma unroll 2
             for(unsigned j = 0; j < LY1; j++){
                 #pragma unroll
                 for(unsigned i = 0; i < LX1; i++){
