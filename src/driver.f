@@ -51,13 +51,13 @@ c     SET UP and RUN NEKBONE
            call set_f(f,c,n)
 
            if(nid.eq.0) write(6,*)
-           call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+!           call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 
            call nekgsync()
 
-           call set_timer_flop_cnt(0)
+!           call set_timer_flop_cnt(0)
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-           call set_timer_flop_cnt(1)
+!           call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
            
