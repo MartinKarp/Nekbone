@@ -41,11 +41,11 @@ c     set machine tolerances
 
       rnorm = sqrt(glsc3(r,c,r,n))
       iter = 0
-      if (nid.eq.0)  write(6,6) iter,rnorm
+ !     if (nid.eq.0)  write(6,6) iter,rnorm
 
       miter = niter
 c     call tester(z,r,n)
-      do iter=1,miter
+!      do iter=1,miter
          call solveM(z,r,n) ! preconditioner here
 
          rtz2=rtz1                                                       ! OPS
@@ -53,32 +53,42 @@ c     call tester(z,r,n)
 
          beta = rtz1/rtz2
          if (iter.eq.1) beta=0.0
-         call add2s1(p,z,beta,n)                                         ! 2n
+         call add2s1(p,z,beta,n) ! 2n
 
-         call ax(w,p,g,ur,us,ut,wk,n)                                    ! flopa
-         pap=glsc3(w,c,p,n)                                              ! 3n
+         call set_timer_flop_cnt(0)
+!     call nvmlAPIRun
+         call apibegin
+          do iter = 1, niter
+             call ax(w,p,g,ur,us,ut,wk,n) ! flopa
+          end do
+          stop 42
+          call apiend
+!     call nvmlAPIEnd
+!          call nekgsync()
+          call set_timer_flop_cnt(1)
+!         pap=glsc3(w,c,p,n)                                              ! 3n
 
-         alpha=rtz1/pap
-         alphm=-alpha
-         call add2s2(x,p,alpha,n)                                        ! 2n
-         call add2s2(r,w,alphm,n)                                        ! 2n
-         rtr = glsc3(r,c,r,n)                                            ! 3n
-         if (iter.eq.1) rlim2 = rtr*eps**2
-         if (iter.eq.1) rtr0  = rtr
-         rnorm = sqrt(rtr)
-c        if (nid.eq.0.and.mod(iter,100).eq.0)
-c     $   write(6,6) iter,rnorm,alpha,beta,pap
+!         alpha=rtz1/pap
+!         alphm=-alpha
+!         call add2s2(x,p,alpha,n)                                        ! 2n
+!         call add2s2(r,w,alphm,n)                                        ! 2n
+!         rtr = glsc3(r,c,r,n)                                            ! 3n
+!         if (iter.eq.1) rlim2 = rtr*eps**2
+!         if (iter.eq.1) rtr0  = rtr
+!         rnorm = sqrt(rtr)
+!c        if (nid.eq.0.and.mod(iter,100).eq.0)
+!c!     $   write(6,6) iter,rnorm,alpha,beta,pap
 
-    6    format('cg:',i4,1p4e12.4)
-c        if (rtr.le.rlim2) goto 1001
+!    6    format('cg:',i4,1p4e12.4)
+!c        if (rtr.le.rlim2) goto 1001
 
-      enddo
+!      enddo
 
- 1001 continue
+! 1001 continue
 
-      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
+!      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
 
-      flop_cg = flop_cg + iter*15.*n
+      flop_cg = 0d0 !flop_cg + iter*15.*n
 
       return
       end
@@ -112,13 +122,13 @@ c-----------------------------------------------------------------------
      $                             ,ur,us,ut,wk) !  L     L  L
       enddo                                      !
 
-      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
+!      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
                                                         !            L
-      call add2s2(w,u,.1,n)   !2n
-      call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
+!      call add2s2(w,u,.1,n)   !2n
+!      call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
 
       nxyz=nx1*ny1*nz1
-      flop_a = flop_a + (19*nxyz+12*nx1*nxyz)*nelt
+      flop_a = flop_a + (19*nxyz+12*nx1*nxyz)*dble(nelt)
 
       return
       end
@@ -518,13 +528,13 @@ c ifndef _CUDA
 c endif _CUDA
 
 #ifdef GPUDIRECT
-      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
+!      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
 #else
-      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
+!      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
 #endif
 
-      call add2s2_acc(w,u,.1,n)   !2n
-      call maskit_acc(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
+!      call add2s2_acc(w,u,.1,n)   !2n
+!      call maskit_acc(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
 
 !$ACC END DATA
 
@@ -589,11 +599,11 @@ c     set machine tolerances
       call rzero_acc(x,n)
       rnorm = sqrt(glsc3_acc(r,c,r,n))
       iter = 0
-      if (nid.eq.0)  write(6,6) iter,rnorm
+!      if (nid.eq.0)  write(6,6) iter,rnorm
 
       miter = niter
 c     call tester(z,r,n)
-      do iter=1,miter
+!      do iter=1,miter
          call solveM_acc(z,r,n)    ! preconditioner here
          rtz2=rtz1                                                       ! OPS
          rtz1=glsc3_acc(r,c,z,n)   ! parallel weighted inner product r^T C z ! 3n
@@ -625,33 +635,39 @@ c     call tester(z,r,n)
          if (iter.eq.1) beta=0.0
          call add2s1_acc(p,z,beta,n)                                     ! 2n
 
-         call ax_acc(w,p,g,ur,us,ut,wk,n)                                ! flopa
+         call set_timer_flop_cnt(0)
+          call apibegin(nelt, lx1)
+         do iter = 1, niter         
+            call ax_acc(w,p,g,ur,us,ut,wk,n) ! flopa
+         end do
+          call apiend
+          call set_timer_flop_cnt(1)
 
-         pap=glsc3_acc(w,c,p,n)                                          ! 3n
+!         pap=glsc3_acc(w,c,p,n)                                          ! 3n
 
-         alpha=rtz1/pap
-         alphm=-alpha
-         call add2s2_acc(x,p,alpha,n)                                    ! 2n
-         call add2s2_acc(r,w,alphm,n)                                    ! 2n
-         rtr = glsc3_acc(r,c,r,n)                                        ! 3n
+!         alpha=rtz1/pap
+!         alphm=-alpha
+!         call add2s2_acc(x,p,alpha,n)                                    ! 2n
+!         call add2s2_acc(r,w,alphm,n)                                    ! 2n
+!         rtr = glsc3_acc(r,c,r,n)                                        ! 3n
 
-         if (iter.eq.1) rlim2 = rtr*eps**2
-         if (iter.eq.1) rtr0  = rtr
-         rnorm = sqrt(rtr)
+!         if (iter.eq.1) rlim2 = rtr*eps**2
+!         if (iter.eq.1) rtr0  = rtr
+!         rnorm = sqrt(rtr)
 
 c        if (nid.eq.0.and.mod(iter,100).eq.0)
 c     $   write(6,6) iter,rnorm,alpha,beta,pap
 
-    6    format('cg:',i4,1p4e12.4)
+!    6    format('cg:',i4,1p4e12.4)
 c        if (rtr.le.rlim2) goto 1001
 
-      enddo
+!      enddo
 
- 1001 continue
+! 1001 continue
 
 !$ACC END DATA
 
-      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
+!      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
 
       flop_cg = flop_cg + iter*15.*n
 

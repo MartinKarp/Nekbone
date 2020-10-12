@@ -28,7 +28,7 @@ PPS_C = $(patsubst %,-D%,$(PPS))
 
 #NEW #########################################################################
 BONE = cg.o driver.o math.o mxm_wrapper.o prox_dssum.o\
-prox_setup.o semhat.o speclib.o 
+prox_setup.o semhat.o speclib.o nvmlPower.o
 
 ifeq ($(IFNEKCOMM),true)
 BONE = driver_comm.o math.o mxm_wrapper.o \
@@ -153,6 +153,7 @@ $(OBJDIR)/bg_mxm44_uneven.o :$S/bg_mxm44_uneven.s;	$(CC) -c $< -o $@
 $(OBJDIR)/k10_mxm.o	  :$S/k10_mxm.c;		$(CC)  -c $(cFL2) $(JL) $< -o $@
 # C Files ##################################################################################
 $(OBJDIR)/byte.o                 :$S/byte.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
+$(OBJDIR)/nvmlPower.o		 :$S/nvmlPower.cpp;	  nvcc -c $< -o $@
 $(OBJDIR)/chelpers.o             :$S/chelpers.c;          $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)fail.o            :$(J)/fail.c;            $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)tensor.o          :$(J)/tensor.c;          $(CC) -c $(cFL2) $(JL) $< -o $@

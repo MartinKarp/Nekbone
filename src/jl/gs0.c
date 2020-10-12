@@ -100,12 +100,14 @@
 #define DO_MUL(a,b) a*=b
 #define DO_MIN(a,b) if(b<a) a=b
 #define DO_MAX(a,b) if(b>a) a=b
-#define DO_BPR(a,b) \
+#define DO_BPR(a,b) a+=b
+
+/*				 \
   do { uint a_ = a; uint b_ = b; \
        for(;;) { if(a_<b_) b_>>=1; else if(b_<a_) a_>>=1; else break; } \
        a = a_; \
      } while(0)
-
+*/
 
 #define LOOP(op) do { \
   sint i,j; \
@@ -145,13 +147,14 @@ static void local_uncondense(real *u, const sint *cm)
 
 static void local_condense_vec(real *u, uint n, int op, const sint *cm)
 {
-  switch(op) {
-    case OP_ADD: LOOP(DO_ADD); break;
-    case OP_MUL: LOOP(DO_MUL); break;
-    case OP_MIN: LOOP(DO_MIN); break;
-    case OP_MAX: LOOP(DO_MAX); break;
-    case OP_BPR: LOOP(DO_BPR); break;
-  }
+  LOOP(DO_ADD);
+  //  switch(op) {
+  //    case OP_ADD: LOOP(DO_ADD); break;
+      //    case OP_MUL: LOOP(DO_MUL); break;
+      //    case OP_MIN: LOOP(DO_MIN); break;
+      //    case OP_MAX: LOOP(DO_MAX); break;
+      //    case OP_BPR: LOOP(DO_BPR); break;
+  //  }
 }
 
 static void local_uncondense_vec(real *u, uint n, const sint *cm)

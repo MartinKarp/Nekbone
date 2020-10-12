@@ -27,8 +27,8 @@
   macro(T,add) \
   macro(T,mul) \
   macro(T,min) \
-  macro(T,max) \
-  macro(T,bpr)
+  macro(T,max) 
+//  macro(T,bpr)
 
 #define GS_DO_add(a,b) a+=b
 #define GS_DO_mul(a,b) a*=b

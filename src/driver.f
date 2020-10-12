@@ -21,7 +21,8 @@ c-----------------------------------------------------------------------
       integer iel0,ielN,ielD   ! element range per proc.
       integer nx0,nxN,nxD      ! poly. order range
       integer npx,npy,npz      ! processor decomp
-      integer mx ,my ,mz       ! element decomp
+      integer mx ,my ,mz        ! element decomp
+      integer iter
 
 #ifdef _OPENACC
       include 'ACCNEK'
@@ -64,7 +65,8 @@ c     SET UP and RUN NEKBONE
 !$ACC&      CREATE(ids_lgl1,ids_lgl2,ids_ptr)
       do nx1=nx0,nxN,nxD
          call init_dim
-         do nelt=iel0,ielN,ielD
+         do iter=iel0,ielN,ielD
+            nelt = 2**iter
            call init_mesh(ifbrick,cmask,npx,npy,npz,mx,my,mz)
            call proxy_setupds     (gsh,nx1) ! Has nekmpi common block
 
@@ -80,7 +82,7 @@ c     SET UP and RUN NEKBONE
 !$ACC UPDATE DEVICE(mg_rstr_wt,mg_schwarz_wt,mg_jht,mg_jh)
 !$ACC UPDATE DEVICE(mg_imask,mg_fast_s,mg_fast_d)
 #endif
-           niter = 100
+           niter = 50000
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
@@ -88,13 +90,13 @@ c     SET UP and RUN NEKBONE
 !$ACC UPDATE DEVICE(f)
 
            if(nid.eq.0) write(6,*)
-           call cg_acc(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+!           call cg_acc(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 
            call nekgsync()
 
-           call set_timer_flop_cnt(0)
+!           call set_timer_flop_cnt(0)
            call cg_acc(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-           call set_timer_flop_cnt(1)
+!           call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
 #ifdef MGRID
