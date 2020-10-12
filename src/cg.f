@@ -22,6 +22,7 @@ c
       real ur(lt),us(lt),ut(lt),wk(lt)
 
       real x(n),f(n),r(n),w(n),p(n),z(n),g(1),c(n)
+      real joule_before, joule_after
 
       character*1 ans
 
@@ -56,10 +57,13 @@ c     call tester(z,r,n)
          call add2s1(p,z,beta,n)                                         ! 2n
 
          call set_timer_flop_cnt(0)
+         joule_before = getenergycpu()
          do i = 1, niter
             call ax(w,p,g,ur,us,ut,wk,n) ! flopa
          enddo
          call set_timer_flop_cnt(1)
+         joule_after = getenergycpu()
+         print *,'Energy consumed is:',(joule_after-joule_before)
 !         pap=glsc3(w,c,p,n)                                              ! 3n
 
 !         alpha=rtz1/pap
