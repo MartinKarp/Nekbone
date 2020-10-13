@@ -75,13 +75,6 @@ c     SET UP and RUN NEKBONE
            call proxy_setup(ah,bh,ch,dh,zh,wh,g)
            call h1mg_setup_acc
 !$ACC UPDATE DEVICE(g,dxm1,dxtm1,cmask,c)
-#ifdef MGRID
-!$ACC DATA CREATE(mg_imask,work,work2,mg_schwarz_wt,mg_work)
-!$ACC&     CREATE(mg_fast_s,mg_fast_d,mg_rstr_wt,mg_jht,mg_jh)
-!$ACC&     CREATE(e_h,w_h,r_h)
-!$ACC UPDATE DEVICE(mg_rstr_wt,mg_schwarz_wt,mg_jht,mg_jh)
-!$ACC UPDATE DEVICE(mg_imask,mg_fast_s,mg_fast_d)
-#endif
            niter = 50000
            n     = nx1*ny1*nz1*nelt
 
@@ -90,12 +83,11 @@ c     SET UP and RUN NEKBONE
 !$ACC UPDATE DEVICE(f)
 
            if(nid.eq.0) write(6,*)
-!           call cg_acc(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 
            call nekgsync()
 
 !           call set_timer_flop_cnt(0)
-           call cg_acc(x,f,g,c,r,w,p,z,n,niter,flop_cg)
+           call bk5_acc(g,w,p,n,niter)
 !           call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
@@ -108,35 +100,6 @@ c     SET UP and RUN NEKBONE
       enddo
 !$ACC UPDATE SELF(cmask)
 !$ACC END DATA
-#else
-      do nx1=nx0,nxN,nxD
-         call init_dim
-         do nelt=iel0,ielN,ielD
-           call init_mesh(ifbrick,cmask,npx,npy,npz,mx,my,mz)
-           call proxy_setupds    (gsh,nx1) ! Has nekmpi common block
-           call set_multiplicity (c)       ! Inverse of counting matrix
-
-           call proxy_setup(ah,bh,ch,dh,zh,wh,g)
-           call h1mg_setup
-           niter = 100
-           n     = nx1*ny1*nz1*nelt
-
-           call set_f(f,c,n)
-
-           if(nid.eq.0) write(6,*)
-           call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-
-           call nekgsync()
-
-           call set_timer_flop_cnt(0)
-           call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-           call set_timer_flop_cnt(1)
-
-           call gs_free(gsh)
-           icount = icount + 1
-           mfloplist(icount) = mflops*np
-         enddo
-      enddo
 #endif
       avmflop = 0.0
       do i = 1,icount

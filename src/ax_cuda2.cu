@@ -96,12 +96,4 @@ extern "C" {
 		 const double* __restrict__ dxm1, const double* __restrict__ dxtm1, const int *nel){
     ax_cuda2_kernel<<<*nel,dim3(LX1,LY1,1)>>>(w, u, gxyz, dxm1, dxtm1);
   }
-
-  void apibegin_(int *n, int *m) {  
-    nvmlAPIRun(n, m);
-  }
-
-  void apiend_() {
-    nvmlAPIEnd();
-  }
 }

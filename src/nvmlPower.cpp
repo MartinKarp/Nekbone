@@ -195,3 +195,13 @@ int getNVMLError(nvmlReturn_t resultToCheck)
   
   return 0;
 }
+
+extern "C" {
+  void apibegin_(int *n, int *m) {  
+    nvmlAPIRun(n, m);
+  }
+
+  void apiend_() {
+    nvmlAPIEnd();
+  }
+}

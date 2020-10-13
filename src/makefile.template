@@ -27,7 +27,7 @@ PPS_F = $(patsubst %,$(PPPO)-D%,$(PPS))
 PPS_C = $(patsubst %,-D%,$(PPS))
 
 #NEW #########################################################################
-BONE = cg.o driver.o math.o mxm_wrapper.o prox_dssum.o\
+BONE = bk5.o driver.o math.o mxm_wrapper.o prox_dssum.o\
 prox_setup.o semhat.o speclib.o nvmlPower.o
 
 ifeq ($(IFNEKCOMM),true)
@@ -52,9 +52,9 @@ MXM=mxm_std.o blas.o
 
 ################################################################################
 # CUDA
-BONE += ax_cuda.o 
+#BONE += ax_cuda.o 
 BONE += ax_cuda2.o
-BONE += hsmg_cuda.o
+#BONE += hsmg_cuda.o
 # JL Routines ###################################################################
 JO  = jl_
 JL := -DPREFIX=jl_
@@ -126,7 +126,7 @@ clean:
 
 $(NOBJS_Fbon) : SIZE
 # CORE      ############################################################################
-$(OBJDIR)/cg.o          :$S/cg.f;                       $(F77) -c $(FL4) $< -o $@
+$(OBJDIR)/bk5.o          :$S/bk5.f;                       $(F77) -c $(FL4) $< -o $@
 $(OBJDIR)/prox_dssum.o  :$S/prox_dssum.f;               $(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/prox_setup.o  :$S/prox_setup.f;               $(F77) -c $(FL4) $< -o $@
 $(OBJDIR)/hsmg.o        :$S/hsmg.f;                     $(F77) -c $(FL2) $< -o $@
@@ -153,7 +153,7 @@ $(OBJDIR)/bg_mxm44_uneven.o :$S/bg_mxm44_uneven.s;	$(CC) -c $< -o $@
 $(OBJDIR)/k10_mxm.o	  :$S/k10_mxm.c;		$(CC)  -c $(cFL2) $(JL) $< -o $@
 # C Files ##################################################################################
 $(OBJDIR)/byte.o                 :$S/byte.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/nvmlPower.o		 :$S/nvmlPower.cpp;	  nvcc -c $< -o $@
+$(OBJDIR)/nvmlPower.o		 :$S/nvmlPower.cpp;	  nvc++  -c $< -o $@
 $(OBJDIR)/chelpers.o             :$S/chelpers.c;          $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)fail.o            :$(J)/fail.c;            $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)tensor.o          :$(J)/tensor.c;          $(CC) -c $(cFL2) $(JL) $< -o $@
@@ -172,5 +172,5 @@ $(OBJDIR)/ax_acc.o  :$S/ax_acc.f;   $(F77) -c $(FL3) $< -o $@
 
 # CUDA ############################################################################################
 $(OBJDIR)/ax_cuda.o   :$S/ax_cuda.f;  $(F77) -c $(FL3) $< -o $@
-$(OBJDIR)/ax_cuda2.o  :$S/ax_cuda2.cu; nvcc -c  $< -o $@
-$(OBJDIR)/hsmg_cuda.o  :$S/hsmg_cuda.cu; nvcc -c  $< -o $@
+$(OBJDIR)/ax_cuda2.o  :$S/ax_cuda2.cu; nvcc  -c  $< -o $@
+$(OBJDIR)/hsmg_cuda.o  :$S/hsmg_cuda.cu; nvcc   -c  $< -o $@
