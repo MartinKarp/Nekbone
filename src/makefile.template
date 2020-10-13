@@ -27,8 +27,10 @@ PPS_F = $(patsubst %,$(PPPO)-D%,$(PPS))
 PPS_C = $(patsubst %,-D%,$(PPS))
 
 #NEW #########################################################################
-BONE = bk5.o driver.o math.o mxm_wrapper.o prox_dssum.o\
-prox_setup.o semhat.o speclib.o nvmlPower.o
+BONE = bk5.o driver.o math.o prox_setup.o semhat.o speclib.o nvmlPower.o
+
+#mxm_wrapper.o prox_dssum.o\
+#prox_setup.o semhat.o speclib.o nvmlPower.o
 
 ifeq ($(IFNEKCOMM),true)
 BONE = driver_comm.o math.o mxm_wrapper.o \
@@ -41,11 +43,11 @@ BONE += delay_dum.o
 endif
 endif
 
-ifeq ($(IFMGRID),true)
-BONE += hsmg.o dsygv.o ssygv.o
-else
-BONE += hsmg_dum.o
-endif
+#ifeq ($(IFMGRID),true)
+#BONE += hsmg.o dsygv.o ssygv.o
+#else
+#BONE += hsmg_dum.o
+#endif
 ################################################################################
 # MXM 
 MXM=mxm_std.o blas.o
@@ -75,13 +77,13 @@ else
 endif
 
 #####################################################################################
-TMPBON = $(BONE) $(COMM_MPI) $(MXM)
+TMPBON = $(BONE) $(COMM_MPI) #$(MXM)
 NOBJS_Fbon = $(patsubst %,$(OBJDIR)/%,$(TMPBON))
 
-TMP0c = $(JLCORE)
-NOBJS_C0 = $(patsubst %,$(OBJDIR)/%,$(TMP0c))
+#TMP0c = $(JLCORE)
+#NOBJS_C0 = $(patsubst %,$(OBJDIR)/%,$(TMP0c))
 
-NOBJS0_bone = $(NOBJS_Fbon) $(NOBJS_C0)
+NOBJS0_bone = $(NOBJS_Fbon) #$(NOBJS_C0)
 ##############################################################################
 
 L0=$(G) -O0
@@ -127,50 +129,16 @@ clean:
 $(NOBJS_Fbon) : SIZE
 # CORE      ############################################################################
 $(OBJDIR)/bk5.o          :$S/bk5.f;                       $(F77) -c $(FL4) $< -o $@
-$(OBJDIR)/prox_dssum.o  :$S/prox_dssum.f;               $(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/prox_setup.o  :$S/prox_setup.f;               $(F77) -c $(FL4) $< -o $@
-$(OBJDIR)/hsmg.o        :$S/hsmg.f;                     $(F77) -c $(FL2) $< -o $@
-$(OBJDIR)/hsmg_dum.o    :$S/hsmg_dum.f;                 $(F77) -c $(FL2) $< -o $@
-$(OBJDIR)/ssygv.o       :$S/ssygv.f;                    $(F77) -c $(FL2i4) $< -o $@
-$(OBJDIR)/dsygv.o       :$S/dsygv.f;                    $(F77) -c $(FL2i4) $< -o $@
 $(OBJDIR)/driver.o      :$S/driver.f;                   $(F77) -c $(FL2) $< -o $@
-$(OBJDIR)/driver_comm.o	:$S/driver_comm.f;		$(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/math.o	:$S/math.f;			$(F77) -c $(FL4) $< -o $@
 $(OBJDIR)/semhat.o	:$S/semhat.f;			$(F77) -c $(FL4) $< -o $@
 $(OBJDIR)/speclib.o	:$S/speclib.f;			$(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/blas.o        :$S/blas.f; 		        $(F77) -c $(FL2i4) $< -o $@
 $(OBJDIR)/comm_mpi.o	:$S/comm_mpi.f;			$(F77) -c $(FL2) $< -o $@
-$(OBJDIR)/mpi_dummy.o	:$S/mpi_dummy.f;		$(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/delay.o	:$S/delay.f;			$(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/delay_dum.o	:$S/delay_dum.f;		$(F77) -c $(FL2) $< -o $@
-# MXM       ############################################################################
-$(OBJDIR)/mxm_wrapper.o	  :$S/mxm_wrapper.f;		$(F77) -c $(FL2) $< -o $@ 
-$(OBJDIR)/mxm_std.o	  :$S/mxm_std.f;		$(F77) -c $(FL4) $< -o $@
-$(OBJDIR)/bg_aligned3.o	  :$S/bg_aligned3.s;		$(CC) -c $< -o $@
-$(OBJDIR)/bg_mxm3.o	  :$S/bg_mxm3.s;		$(CC) -c $< -o $@
-$(OBJDIR)/bg_mxm44.o	  :$S/bg_mxm44.s;		$(CC) -c $< -o $@
-$(OBJDIR)/bg_mxm44_uneven.o :$S/bg_mxm44_uneven.s;	$(CC) -c $< -o $@
-$(OBJDIR)/k10_mxm.o	  :$S/k10_mxm.c;		$(CC)  -c $(cFL2) $(JL) $< -o $@
 # C Files ##################################################################################
-$(OBJDIR)/byte.o                 :$S/byte.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/nvmlPower.o		 :$S/nvmlPower.cpp;	  nvc++  -c $< -o $@
 $(OBJDIR)/chelpers.o             :$S/chelpers.c;          $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)fail.o            :$(J)/fail.c;            $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)tensor.o          :$(J)/tensor.c;          $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)sort.o            :$(J)/sort.c;            $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)sarray_sort.o     :$(J)/sarray_sort.c;     $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)comm.o            :$(J)/comm.c;            $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)crystal.o         :$(J)/crystal.c;         $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)sarray_transfer.o :$(J)/sarray_transfer.c; $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)fcrystal.o        :$(J)/fcrystal.c;        $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)sleep.o		:$(J)/sleep.c;		$(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)gs.o              :$(J)/gs.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
-$(OBJDIR)/$(JO)gs_local.o        :$(J)/gs_local.c;        $(CC) -c $(cFL2) $(JL) $< -o $@
-
-# OPENACC #########################################################################################
-$(OBJDIR)/ax_acc.o  :$S/ax_acc.f;   $(F77) -c $(FL3) $< -o $@
-
-# CUDA ############################################################################################
-$(OBJDIR)/ax_cuda.o   :$S/ax_cuda.f;  $(F77) -c $(FL3) $< -o $@
-$(OBJDIR)/ax_cuda2.o  :$S/ax_cuda2.cu; nvcc  -c  $< -o $@
-$(OBJDIR)/hsmg_cuda.o  :$S/hsmg_cuda.cu; nvcc   -c  $< -o $@
+$(OBJDIR)/ax_cuda2.o  :$S/ax_cuda2.cu; nvcc  -O3 -Xcompiler -mcmodel=medium -c  $< -o $@

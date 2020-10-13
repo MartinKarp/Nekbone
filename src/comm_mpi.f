@@ -75,7 +75,7 @@ c
          WRITE(6,*) 'INTEGER wdsize      :',ISIZE
       endif
 
-      call crystal_setup(cr_h,nekcomm,np)  ! set cr handle to new instance
+!      call crystal_setup(cr_h,nekcomm,np)  ! set cr handle to new instance
 
       return
       end
@@ -544,10 +544,10 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
 
 
-      call mxm_test_all(nid,ivb)  ! measure mxm times
+!      call mxm_test_all(nid,ivb)  ! measure mxm times
 c     call exitti('done mxm_test_all$',ivb)
 
-      call comm_test(ivb)         ! measure message-passing and all-reduce times
+!      call comm_test(ivb)         ! measure message-passing and all-reduce times
 
       return
       end

@@ -10,7 +10,7 @@ c-----------------------------------------------------------------------
       parameter (lxyz = lx1*ly1*lz1)
       parameter (lt=lxyz*lelt)
 
-      real x(lt),f(lt),r(lt),w(lt),z(lt),c(lt)
+      real w(lt)
       real p(lx1,ly1,lz1,lelt)
 
       real g(6,lt)
@@ -24,24 +24,6 @@ c-----------------------------------------------------------------------
       integer mx ,my ,mz        ! element decomp
       integer iter
 
-#ifdef _OPENACC
-      include 'ACCNEK'
-      common /TEMP0_ACC/ ur(lx1,lx1,lx1,lelt)
-     $     ,             us(lx1,lx1,lx1,lelt)
-     $     ,             ut(lx1,lx1,lx1,lelt)
-     $     ,             wk(lx1,lx1,lx1,lelt)
-      real ur,us,ut,wk
-
-      common /nsmpi_acc/ ug(lt)
-      real ug
-#endif
-
-#ifdef MGRID
-      include 'HSMG'
-      parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1), work2(0:lwk-1)
-      common /scrmg/ e_h(2*lt),w_h(lt),r_h(lt)
-#endif
 
       call iniproc(mpi_comm_world)    ! has nekmpi common block
       call init_delay
@@ -59,46 +41,34 @@ c     SET UP and RUN NEKBONE
 
 #ifdef _OPENACC
 
-!$ACC  DATA CREATE(x,r,w,p,z,c,f)
-!$ACC&      CREATE(ur,us,ut,wk,ug)
-!$ACC&      CREATE(g,dxm1,dxtm1,cmask)
-!$ACC&      CREATE(ids_lgl1,ids_lgl2,ids_ptr)
+!$ACC  DATA CREATE(w,p)
+!$ACC&      CREATE(g,dxm1,dxtm1)
       do nx1=nx0,nxN,nxD
          call init_dim
          do iter=iel0,ielN,ielD
             nelt = 2**iter
            call init_mesh(ifbrick,cmask,npx,npy,npz,mx,my,mz)
-           call proxy_setupds     (gsh,nx1) ! Has nekmpi common block
 
-           call set_multiplicity   (c)       ! Inverse of counting matrix
-
+           call rone(w,n)
+           call rone(p,n)
            call proxy_setup(ah,bh,ch,dh,zh,wh,g)
-           call h1mg_setup_acc
-!$ACC UPDATE DEVICE(g,dxm1,dxtm1,cmask,c)
+!$ACC UPDATE DEVICE(w,p,g,dxm1,dxtm1)
            niter = 50000
            n     = nx1*ny1*nz1*nelt
-
-           call set_f(f,c,n)
-
-!$ACC UPDATE DEVICE(f)
 
            if(nid.eq.0) write(6,*)
 
            call nekgsync()
 
-!           call set_timer_flop_cnt(0)
            call bk5_acc(g,w,p,n,niter)
-!           call set_timer_flop_cnt(1)
 
-           call gs_free(gsh)
-#ifdef MGRID
-!$ACC END DATA
-#endif
+
+           call nekgsync()
+           
            icount = icount + 1
            mfloplist(icount) = mflops*np
          enddo
       enddo
-!$ACC UPDATE SELF(cmask)
 !$ACC END DATA
 #endif
       avmflop = 0.0
@@ -119,26 +89,6 @@ c     call xfer(np,cr_h)
 
       end
 c--------------------------------------------------------------
-      subroutine set_f(f,c,n)
-      real f(n),c(n)
-c     act as random number generator
-!$ACC DATA PRESENT(f)
-      do i=1,n
-c        arg  = 1.e9*(i*i) ! trouble  w/ certain compilers
-         arg  = (i*i)
-         arg  = cos(arg)
-         f(i) = sin(arg)
-      enddo
-!$ACC UPDATE DEVICE(f)
-      call dssum(f)
-!$ACC UPDATE SELF(f)
-!$ACC END DATA
-
-      call col2 (f,c,n)
-      print *, f(n/10)
-      return
-      end
-c-----------------------------------------------------------------------
       subroutine init_dim
 
 C     Transfer array dimensions to common
@@ -311,37 +261,6 @@ c-----------------------------------------------------------------------
       end
 
 c-----------------------------------------------------------------------
-      subroutine set_multiplicity (c)       ! Inverse of counting matrix
-      include 'SIZE'
-      include 'TOTAL'
-
-!      real c(1)
-
-      real c(lx1*ly1*lz1*lelt)
-
-      n = nx1*ny1*nz1*nelt
-
-      call rone(c,n)
-
-#ifdef _OPENACC
-!$ACC UPDATE DEVICE(c)
-#endif
-
-      call adelay
-      call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
-
-#ifdef _OPENACC
-!$ACC UPDATE HOST(c)
-#endif
-
-      do i=1,n
-         c(i) = 1./c(i)
-      enddo
-
-      return
-      end
-
-c-----------------------------------------------------------------------
       subroutine set_timer_flop_cnt(iset)
       include 'SIZE'
       include 'TOTAL'
@@ -355,11 +274,11 @@ c-----------------------------------------------------------------------
          time0   = dnekclock()
       else
         time1   = dnekclock()-time0
-        if (time1.gt.0) mflops = (flop_a+flop_cg)/(1.e6*time1)
+        if (time1.gt.0) mflops = (flop_a+flop_cg)/(1.d6*time1)
         if (nid.eq.0) then
           write(6,*)
           write(6,1) nelt,np,nx1, nelt*np
-          write(6,2) mflops*np, mflops
+          write(6,2) mflops*dble(np), mflops
           write(6,3) flop_a,flop_cg
           write(6,4) time1
         endif
@@ -369,47 +288,6 @@ c-----------------------------------------------------------------------
     3   format('Setup Flop = ', 1pe12.4, ', Solver Flop = ', e12.4)
     4   format('Solve Time = ', e12.4)
       endif
-
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine xfer(np,gsh)
-      include 'SIZE'
-      parameter(npts_max = lx1*ly1*lz1*lelt)
-
-      real buffer(2,npts_max)
-      integer ikey(npts_max)
-
-
-      nbuf = 800
-      npts = 1
-      do itest=1,200
-         npoints = npts*np
-
-         call load_points(buffer,nppp,npoints,npts,nbuf)
-         iend   = mod1(npoints,nbuf)
-         istart = 1
-         if(nid.ne.0)istart = iend+(nid-1)*nbuf+1
-         do i = 1,nppp
-            icount=istart+(i-1)
-            ikey(i)=mod(icount,np)
-         enddo
-
-         call nekgsync
-         time0 = dnekclock()
-         do loop=1,50
-            call crystal_tuple_transfer(gsh,nppp,npts_max,
-     $                ikey,1,ifake,0,buffer,2,1)
-         enddo
-         time1 = dnekclock()
-         etime = (time1-time0)/50
-
-         if (nid.eq.0) write(6,1) np,npts,npoints,etime
-   1     format(2i7,i10,1p1e12.4,' bandwidth' )
-         npts = 1.02*(npts+1)
-         if (npts.gt.npts_max) goto 100
-      enddo
- 100  continue
 
       return
       end
@@ -536,52 +414,3 @@ c----------------------------------------------------------------------
       end
 c-----------------------------------------------------------------------
 
-#ifdef _OPENACC
-
-c-----------------------------------------------------------------------
-      subroutine set_multiplicity_acc (c)       ! Inverse of counting matrix
-      include 'SIZE'
-      include 'TOTAL'
-      include 'ACCNEK'
-
-      real c(lx1*ly1*lz1*lelt)
-
-      n = nx1*ny1*nz1*nelt
-
-!$ACC DATA PRESENT(c)
-      call rone_acc(c,n)
-      call adelay
-c      call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
-      call dssum_acc(c)   ! Gather-scatter operation  ! w   = QQ  w
-
-!$ACC PARALLEL LOOP
-      do i=1,n
-         c(i) = 1./c(i)
-      enddo
-
-!$ACC END DATA
-
-      return
-      end
-
-c--------------------------------------------------------------
-      subroutine set_f_acc(f,c,n)
-      real f(n),c(n)
-
-!$ACC DATA PRESENT(f,c)
-!$ACC PARALLEL LOOP
-      do i=1,n
-         arg  = i*i
-         arg  = cos(arg)
-         f(i) = sin(arg)
-      enddo
-      call dssum_acc(f)
-
-      call col2_acc (f,c,n)
-
-!$ACC END DATA
-
-      return
-      end
-
-#endif

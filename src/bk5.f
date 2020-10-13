@@ -21,7 +21,7 @@ c-----------------------------------------------------------------------
 
       lt = nx1*ny1*nz1*nelt
       !print *, nelt
-!$ACC DATA PRESENT(w,u(:,:,:,:),gxyz,dxm1,dxtm1)
+!!$ACC DATA PRESENT(w,u(:,:,:,:),gxyz,dxm1,dxtm1)
 
 
 !$ACC HOST_DATA USE_DEVICE(w,u(:,:,:,:),gxyz,dxm1,dxtm1)
@@ -45,10 +45,11 @@ c-----------------------------------------------------------------------
 
   815    format('CUDA ERROR', I3, ': ', A)
 
-!$ACC END DATA
+!!$ACC END DATA
 
       nxyz=nx1*ny1*nz1
-      flop_a = flop_a + (19*nxyz+12*nx1*nxyz)*nelt
+      flop_a = flop_a + (19d0*dble(nxyz)+12d0*dble(nx1)*
+     $     dble(nxyz))*dble(nelt)
 
       return
       end
@@ -82,13 +83,6 @@ c
       integer cuda_err
       character*1 ans
 
-      pap = 0.0
-
-
-
-!$ACC DATA PRESENT(g,w,p)
-      call rone_acc(w, n)
-      call rone_acc(p, n)
 
       call set_timer_flop_cnt(0)
       call apibegin(nelt, lx1)
@@ -98,20 +92,9 @@ c
       call apiend
       call set_timer_flop_cnt(1)
 
-!$ACC END DATA
+
 
 
       return
       end
-c-----------------------------------------------------------------------
-      subroutine solveM_acc(z,r,n)
-      include 'INPUT'
-      real z(n),r(n)
-
-      nn = n
-      call h1mg_solve_acc(z,r,nn)
-      return
-      end
-c-----------------------------------------------------------------------
-
 #endif
