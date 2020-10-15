@@ -37,7 +37,8 @@ c     call platform_timer(iverbose)   ! iverbose=0 or 1
 c     SET UP and RUN NEKBONE
       do nx1=nx0,nxN,nxD
          call init_dim
-         do nelt=iel0,ielN,ielD
+         do ite=iel0,ielN,ielD
+           nelt = 2**ite
            call init_mesh(ifbrick,cmask,npx,npy,npz,mx,my,mz)
            call proxy_setupds    (gsh,nx1) ! Has nekmpi common block
            call set_multiplicity (c)       ! Inverse of counting matrix
@@ -45,7 +46,7 @@ c     SET UP and RUN NEKBONE
            call proxy_setup(ah,bh,ch,dh,zh,wh,g) 
            call h1mg_setup
 
-           niter = 100
+           niter = 1000
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)

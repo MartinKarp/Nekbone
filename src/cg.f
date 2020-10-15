@@ -42,7 +42,7 @@ c     set machine tolerances
 
       rnorm = sqrt(glsc3(r,c,r,n))
       iter = 0
- !     if (nid.eq.0)  write(6,6) iter,rnorm
+      if (nid.eq.0)  write(6,*) iter,rnorm
 
       miter = niter
 c     call tester(z,r,n)  
@@ -56,14 +56,15 @@ c     call tester(z,r,n)
          if (iter.eq.1) beta=0.0
          call add2s1(p,z,beta,n)                                         ! 2n
 
-         call set_timer_flop_cnt(0)
          joule_before = getenergycpu()
+         call set_timer_flop_cnt(0)
          do i = 1, niter
             call ax(w,p,g,ur,us,ut,wk,n) ! flopa
          enddo
          call set_timer_flop_cnt(1)
          joule_after = getenergycpu()
-         print *,'Energy consumed is:',(joule_after-joule_before)
+         if (nid.eq.0)  write(6,*) 'Energy consumed is:',
+     $     (joule_after-joule_before)
 !         pap=glsc3(w,c,p,n)                                              ! 3n
 
 !         alpha=rtz1/pap

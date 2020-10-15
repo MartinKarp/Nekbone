@@ -161,4 +161,4 @@ $(OBJDIR)/$(JO)sleep.o		:$(J)/sleep.c;		$(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs.o              :$(J)/gs.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs_local.o        :$(J)/gs_local.c;        $(CC) -c $(cFL2) $(JL) $< -o $@
 # INTEL RAPL (copied from http://web.eece.maine.edu/~vweaver/projects/rapl/rapl-read.c)
-$(OBJDIR)/intel_rapl.o	:$S/intel_rapl.c;		$(F77) -c $(FL2) $< -o $@
+$(OBJDIR)/intel_rapl.o	:$S/intel_rapl.c;		$(CC) -c $(cFL2) $< -o $@
