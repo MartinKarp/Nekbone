@@ -10,8 +10,8 @@ c-----------------------------------------------------------------------
       parameter (lxyz = lx1*ly1*lz1)
       parameter (lt=lxyz*lelt)
 
-      real x(lt),f(lt),r(lt),w(lt),p(lt),z(lt),c(lt)
-      real g(6,lt)
+      real,allocatable :: x(:),f(:),r(:),w(:),p(:),z(:),c(:)
+      real, allocatable :: g(:,:)
       real mfloplist(1024), avmflop
       integer icount  
 
@@ -20,7 +20,7 @@ c-----------------------------------------------------------------------
       integer nx0,nxN,nxD      ! poly. order range
       integer npx,npy,npz      ! processor decomp
       integer mx ,my ,mz       ! element decomp
-
+      allocate(x(lt),f(lt),r(lt),w(lt),p(lt),z(lt),c(lt),g(6,lt))
 
       call iniproc(mpi_comm_world)    ! has nekmpi common block
       call init_delay
@@ -37,15 +37,15 @@ c     call platform_timer(iverbose)   ! iverbose=0 or 1
 c     SET UP and RUN NEKBONE
       do nx1=nx0,nxN,nxD
          call init_dim
-         do nelt=iel0,ielN,ielD
+         do nelt1=iel0,ielN,ielD
+           nelt = 2**nelt1
            call init_mesh(ifbrick,cmask,npx,npy,npz,mx,my,mz)
            call proxy_setupds    (gsh,nx1) ! Has nekmpi common block
            call set_multiplicity (c)       ! Inverse of counting matrix
 
            call proxy_setup(ah,bh,ch,dh,zh,wh,g) 
            call h1mg_setup
-           print *, 'lel'
-           niter = 10000
+           niter = 100
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
@@ -53,18 +53,24 @@ c     SET UP and RUN NEKBONE
            if(nid.eq.0) write(6,*)
 #ifdef FPGA          
            call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
 #else
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 #endif
            call nekgsync()
 
-           call set_timer_flop_cnt(0)
 #ifdef FPGA          
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
            call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
 #else
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 #endif           
-           call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
            

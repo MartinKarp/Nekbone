@@ -27,7 +27,7 @@ __kernel void ax(__global double * restrict w,
             shdxm1[ij] = dxm1[ij];
             shdxtm1[ij] = dxtm1[ij];
         }
-        printf("hej"); 
+        //printf("hej"); 
         int ele = e*LX1*LY1*LZ1;
         for(unsigned k=0; k<LZ1; ++k){
             for(unsigned j = 0; j < LX1; j++){
@@ -39,7 +39,6 @@ __kernel void ax(__global double * restrict w,
                 }
             }
         }   
-        //printf("%f %f %f %f %f %f\n",gxyz[N*6-6],gxyz[N*6-5],gxyz[N*6-4],gxyz[N*6-3],gxyz[N*6-2],gxyz[N*6-1]);
         for (unsigned k=0; k<LZ1; ++k){
             for(unsigned j = 0; j < LY1; j++){
                 for(unsigned i = 0; i < LX1; i++){
@@ -68,7 +67,7 @@ __kernel void ax(__global double * restrict w,
                     shut[ijk]  = G02*rtmp
                              + G12*stmp
                              + G22*ttmp;
-                    //printf("%.10e %.10e %.10e %.10e\n",shur[ijk],rtmp,G00, gxyz[6*ijk+ele*6]);
+                    //printf("%.10e,%.10e %.10e %.10e %.10e\n",shu[ijk],shur[ijk],rtmp,G00, g1[ijk+ele]);
                 }
             }
         }

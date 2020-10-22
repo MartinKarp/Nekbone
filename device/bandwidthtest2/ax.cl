@@ -1,0 +1,14 @@
+#define LX1 10
+#define LY1 10
+#define LZ1 10
+__kernel void ax(__global double * restrict w,
+                        __global const double * restrict p,
+                        __global const double * restrict gxyz,
+                        __global const double * restrict dxm1,
+                        int N){
+    #pragma unroll 16 
+    for( unsigned i = 0; i < N; i++){
+	w[i] = p[i];
+    }
+}
+

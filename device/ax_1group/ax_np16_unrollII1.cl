@@ -27,8 +27,8 @@ __kernel void ax(__global double * restrict w,
         double shg5[LX1*LY1*LZ1];
         double shg6[LX1*LY1*LZ1];
         double shu[LX1*LY1*LZ1];
-        double shdxm1[128];
-        double shdxtm1[128];
+        double shdxm1[LX1*LY1];
+        double shdxtm1[LX1*LY1];
         #pragma unroll 32
         for(unsigned ij=0; ij<LX1*LY1; ++ij){
             shdxm1[ij] = dxm1[ij];
