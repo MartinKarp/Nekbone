@@ -391,21 +391,24 @@ c
      
 c   Target necessary for OpenCL
       real, target :: x(n),f(n),r(n),w(n),p(n),z(n),g(6*n),c(n),
-     $ dxm1,dxtm1
+     $ dxm1,dxtm1, g1(n), g2(n), g3(n), g4(n), g5(n), g6(n)
 !      real x(n),f(n),r(n),w(n),p(n),z(n),g(1),c(n)
 
       integer(c_intptr_t), target ::
      $ cl_x,cl_f,cl_r1,cl_w,cl_p,cl_z,cl_g,cl_c,cl_rtr, cl_rtz1,
-     $ cl_dxm1, cl_dxtm1, cl_xr, cl_xs, cl_xt, cl_wk, cl_cmask
-      integer, target :: n, iter
+     $ cl_dxm1, cl_dxtm1, cl_ur, cl_us, cl_ut, cl_wk, cl_cmask,
+     $ cl_g1, cl_g2, cl_g3, cl_g4, cl_g5, cl_g6
+      integer, target :: n, iter, n2
       character*1 ans
 c OPencl things
-      integer(c_size_t) :: byte_size, element_size, ret, g_size
+      integer(c_size_t) :: byte_size,byte_size2,
+     $                     element_size, ret, g_size
       integer(c_int32_t) :: err
       character(len=1024) :: options, kernel_name
       character(len=1, kind=c_char),allocatable :: kernel_str(:)
       !integer, target :: np
-      integer(c_size_t),target :: globalsize,localsize, length
+      integer(c_size_t),target :: globalsize, length
+      integer(c_size_t),target :: localsize(3)
       integer(c_intptr_t), target :: 
      $ cmd_queue,prog,context,ax_kernel,binary_status
       integer(c_intptr_t), allocatable, target :: 
@@ -416,12 +419,14 @@ c OPencl things
       integer :: filesize 
       character(len=1,kind=c_char), allocatable, target :: binary(:)
       character(len=1,kind=c_char), target :: c_kernel_name(1:1024)
-      type(c_ptr), target :: psource
+      type(c_ptr), target :: psource, event
       real, target ::  rtr, rtz1
       kernel_name = "ax"
       idevice = 1
       iplatform = 2
+      n2 = n * 1000
       byte_size= 8_8 * int(n,8)
+      byte_size2= 8_8 * int(n2,8)
       g_size= 8_8 * int(6*n,8)
       element_size = 8_8*int(lx1*ly1,8)
 
@@ -431,7 +436,6 @@ c OPencl things
       call query_platform_info(platform_ids(iplatform))
       call read_file("ax.aocx",binary,filesize)
       length = filesize
-        
       psource = C_LOC(binary)
       prog = clCreateProgramWithBinary(
      $ context,1, C_LOC(device_ids(idevice)),
@@ -452,60 +456,82 @@ c OPencl things
       err = clReleaseProgram(prog)
       if (err.ne.0) stop 'clReleaseProgram'
 c Init arrays
-!      cl_p = clCreateBuffer(context, 
-!     $      ior(CL_MEM_READ_WRITE, CL_CHANNEL_1_INTELFPGA),
-!     $      byte_size,C_NULL_PTR, err)
-!      if (err.ne.0) stop 'clCreateBuffer'
-!      cl_w = clCreateBuffer(context, 
-!     $      ior(CL_MEM_READ_WRITE, CL_CHANNEL_2_INTELFPGA),
-!     $      byte_size,C_NULL_PTR, err)
-!      if (err.ne.0) stop 'clCreateBuffer'
-!      
-!      cl_g = clCreateBuffer(context, 
-!     $     ior(CL_MEM_READ_ONLY,CL_CHANNEL_3_INTELFPGA),
-!     $     g_size,C_NULL_PTR, err)
-!      if (err.ne.0) stop 'clCreateBuffer'
-! 
-!      cl_x = clCreateBuffer(context, 
-!     $      ior(CL_MEM_READ_ONLY,CL_CHANNEL_4_INTELFPGA),
-!     $      byte_size,C_NULL_PTR, err)
-!      if (err.ne.0) stop 'clCreateBuffer'
- 
       cl_p = clCreateBuffer(context, 
-     $      CL_MEM_READ_WRITE,
-     $      byte_size,C_NULL_PTR, err)
+     $      ior(CL_MEM_READ_WRITE, CL_CHANNEL_1_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
       cl_w = clCreateBuffer(context, 
-     $      CL_MEM_READ_WRITE,
-     $      byte_size,C_NULL_PTR, err)
+     $      ior(CL_MEM_READ_WRITE, CL_CHANNEL_2_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
-      
-      cl_g = clCreateBuffer(context, 
-     $     CL_MEM_READ_ONLY,
-     $     g_size,C_NULL_PTR, err)
+
+      cl_g1 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_3_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g2 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_4_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g3 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_1_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g4 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_2_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g5 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_3_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g6 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_4_INTELFPGA),
+     $      byte_size2,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
  
-      cl_x = clCreateBuffer(context, 
-     $      CL_MEM_READ_ONLY,
-     $      byte_size,C_NULL_PTR, err)
+      cl_dxm1 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_1_INTELFPGA),
+     $      element_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_dxtm1 = clCreateBuffer(context, 
+     $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_2_INTELFPGA),
+     $      element_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
      
-
-      err=clSetKernelArg(ax_kernel,0,sizeof(8_8),C_LOC(cl_w))
+      err=clSetKernelArg(ax_kernel,0,sizeof(cl_w),C_LOC(cl_w))
       if (err.ne.0) stop 'clSetKernelArg'
-      err=clSetKernelArg(ax_kernel,1,sizeof(8_8),C_LOC(cl_p))
+      err=clSetKernelArg(ax_kernel,1,sizeof(cl_p),C_LOC(cl_p))
       if (err.ne.0) stop 'clSetKernelArg'
-      err=clSetKernelArg(ax_kernel,2,sizeof(8_8),C_LOC(cl_g))
+      err=clSetKernelArg(ax_kernel,2,sizeof(cl_g1),C_LOC(cl_g1))
       if (err.ne.0) stop 'clSetKernelArg'
-      err=clSetKernelArg(ax_kernel,3,sizeof(8_8),C_LOC(cl_x))
+      err=clSetKernelArg(ax_kernel,3,sizeof(cl_g2),C_LOC(cl_g2))
       if (err.ne.0) stop 'clSetKernelArg'
-      err=clSetKernelArg(ax_kernel,4,sizeof(8_4),C_LOC(n))
+      err=clSetKernelArg(ax_kernel,4,sizeof(cl_g3),C_LOC(cl_g3))
       if (err.ne.0) stop 'clSetKernelArg'
-!      err=clSetKernelArg(ax_kernel,5,sizeof(8_4),C_LOC(iter))
-!      if (err.ne.0) stop 'clSetKernelArg'
-      
+      err=clSetKernelArg(ax_kernel,5,sizeof(cl_g4),C_LOC(cl_g4))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,6,sizeof(cl_g5),C_LOC(cl_g5))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,7,sizeof(cl_g6),C_LOC(cl_g6))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,8,sizeof(cl_dxm1),C_LOC(cl_dxm1))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,9,sizeof(cl_dxtm1),C_LOC(cl_dxtm1))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,10,sizeof(n),C_LOC(n2))
+      if (err.ne.0) stop 'clSetKernelArg'
+ 
       globalsize=int(n,8)
-       
+      localsize=(/int(8,8),int(8,8),int(8,8)/)
+      do i=0,n-1
+         g1(i+1) = g(1 + 6*i)
+         g2(i+1) = g(2 + 6*i)
+         g3(i+1) = g(3 + 6*i)
+         g4(i+1) = g(4 + 6*i)
+         g5(i+1) = g(5 + 6*i)
+         g6(i+1) = g(6 + 6*i)
+      enddo 
       pap = 0.0
 c     set machine tolerances
       one = 1.
@@ -513,21 +539,48 @@ c     set machine tolerances
       if (one+eps .eq. one) eps = 1.e-14
       if (one+eps .eq. one) eps = 1.e-7
       rtz1=1.0
-      iter = 0
       miter = niter
+!      call rzero(x,n)
+!      call copy (r,f,n)
+!      call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
+!      rnorm = sqrt(glsc3(r,c,r,n))
+      iter = 0
+      if (nid.eq.0)  write(6,6) iter,rnorm
       err=clEnqueueWriteBuffer(cmd_queue,cl_w,CL_TRUE,0_8,
      $    byte_size,C_LOC(w), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
       err=clEnqueueWriteBuffer(cmd_queue,cl_p,CL_TRUE,0_8,
      $    byte_size,C_LOC(p), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
-      err=clEnqueueWriteBuffer(cmd_queue,cl_g,CL_TRUE,0_8,
-     $    g_size,C_LOC(g), 0,C_NULL_PTR,C_NULL_PTR)
+      
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g1,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g1), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
-      err=clEnqueueWriteBuffer(cmd_queue,cl_x,CL_TRUE,0_8,
-     $    byte_size,C_LOC(p), 0,C_NULL_PTR,C_NULL_PTR)
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g2,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g2), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g3,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g3), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g4,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g4), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g5,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g5), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g6,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g6), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      
+      err=clEnqueueWriteBuffer(cmd_queue,cl_dxm1,CL_TRUE,0_8,
+     $    element_size,C_LOC(dxm1), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_dxtm1,CL_TRUE,0_8,
+     $    element_size,C_LOC(dxtm1), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
 c     call tester(z,r,n)  
+      call set_timer_flop_cnt(0)
+
       do iter=1,miter
          !call solveM(z,r,n)    ! preconditioner here
 
@@ -540,6 +593,11 @@ c     call tester(z,r,n)
          err=clEnqueueTask(cmd_queue,ax_kernel,
      $    0,C_NULL_PTR,C_NULL_PTR)
          if (err.ne.0) stop 'clEnqueueEnqueueTask'
+         !if ((iter mod 100) == 0) call power(platform_ids,device_ids)
+!         err=clEnqueueNDRangeKernel(cmd_queue,ax_kernel,
+!     $    1,C_NULL_PTR,C_LOC(globalsize),C_LOC(localsize),
+!     $    0,C_NULL_PTR,C_NULL_PTR)
+!         if (err.ne.0) stop 'clEnqueueEnqueueNDRange'
         
 !         err = clEnqueueReadBuffer(cmd_queue,cl_w,CL_TRUE,
 !     $      0_8,byte_size,C_LOC(w),0,C_NULL_PTR,C_NULL_PTR)
@@ -558,9 +616,6 @@ c     call tester(z,r,n)
          !call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
    
 
-c         err=clEnqueueNDRangeKernel(cmd_queue,kernel,
-c     $    1,C_NULL_PTR,C_LOC(globalsize),C_NULL_PTR,
-c     $    0,C_NULL_PTR,C_NULL_PTR)
 c         if (err.ne.0) stop 'clEnqueueNDRangeKernel'
 !         err=clFinish(cmd_queue)
 !         if (err.ne.0) stop 'clFinish'
@@ -588,22 +643,39 @@ c         if (err.ne.0) stop 'clEnqueueNDRangeKernel'
 !         rnorm = sqrt(rtr)
 c        if (nid.eq.0.and.mod(iter,100).eq.0) 
 c    $      write(6,6) iter,rnorm,alpha,beta,pap
-!    6    format('cg:',i4,1p4e12.4)
+    6    format('cg:',i4,1p4e12.4)
 c        if (rtr.le.rlim2) goto 1001
 
       enddo
+      call power(platform_ids,device_ids)
 
  1001 continue
       nxyz=nx1*ny1*nz1
       flop_a = flop_a 
-     $       + (dble(19) * dble(nxyz) + dble(12) *dble(nx1)* dble(nxyz))
+     $       + (dble(15) * dble(nxyz) + dble(12) *dble(nx1)* dble(nxyz))
      $       * dble(nelt) * dble(miter)
-!      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
+      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
       err=clFinish(cmd_queue)
       if (err.ne.0) stop 'clFinish'
       err = clReleaseCommandQueue(cmd_queue) 
       err = clReleaseContext(context)  
- 
+      err = clReleaseMemObject(cl_p)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_w)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g1)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g2)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g3)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g4)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g5)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g6)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      call set_timer_flop_cnt(1)
       return
       end
 c      ---------------------------------------------------------------
