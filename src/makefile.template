@@ -28,7 +28,7 @@ PPS_C = $(patsubst %,-D%,$(PPS))
 
 #NEW #########################################################################
 BONE = cg.o driver.o math.o mxm_wrapper.o prox_dssum.o\
-prox_setup.o semhat.o speclib.o 
+prox_setup.o semhat.o speclib.o power.o
 
 ifeq ($(IFNEKCOMM),true)
 BONE = driver_comm.o math.o mxm_wrapper.o \
@@ -167,4 +167,7 @@ $(OBJDIR)/$(JO)fcrystal.o        :$(J)/fcrystal.c;        $(CC) -c $(cFL2) $(JL)
 $(OBJDIR)/$(JO)sleep.o		:$(J)/sleep.c;		$(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs.o              :$(J)/gs.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs_local.o        :$(J)/gs_local.c;        $(CC) -c $(cFL2) $(JL) $< -o $@
+$(OBJDIR)/power.o        :$S/power.c;        $(CC) -c $(cFL2) -I/cm/shared/opt/intelFPGA_pro/20.2.0/hld/host/include -lOpenCL -lalteracl -lbitt_s10_pcie_mmd -lelf $< -o $@
 
+
+ 
