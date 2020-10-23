@@ -363,7 +363,8 @@ c  1  format(7i7,a8)
 c-----------------------------------------------------------------------
 #ifdef FPGA
 
-      subroutine cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
+      subroutine ax_fpga(x,f,g,c,r,w,p,z,n,niter,
+     $                    flop_cg,flop_a,file_name)
       use clfortran
       use clroutines
       use ISO_C_BINDING  
@@ -404,7 +405,7 @@ c OPencl things
       integer(c_size_t) :: byte_size,byte_size2,
      $                     element_size, ret, g_size
       integer(c_int32_t) :: err
-      character(len=1024) :: options, kernel_name
+      character(len=1024) :: options, kernel_name, file_name
       character(len=1, kind=c_char),allocatable :: kernel_str(:)
       !integer, target :: np
       integer(c_size_t),target :: globalsize, length
@@ -424,9 +425,7 @@ c OPencl things
       kernel_name = "ax"
       idevice = 1
       iplatform = 2
-      n2 = n * 1000
       byte_size= 8_8 * int(n,8)
-      byte_size2= 8_8 * int(n2,8)
       g_size= 8_8 * int(6*n,8)
       element_size = 8_8*int(lx1*ly1,8)
 
@@ -434,7 +433,7 @@ c OPencl things
       call create_device_context(iplatform, platform_ids,
      $                           device_ids, context, cmd_queue)
       call query_platform_info(platform_ids(iplatform))
-      call read_file("ax.aocx",binary,filesize)
+      call read_file(file_name,binary,filesize)
       length = filesize
       psource = C_LOC(binary)
       prog = clCreateProgramWithBinary(
@@ -458,36 +457,36 @@ c OPencl things
 c Init arrays
       cl_p = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_WRITE, CL_CHANNEL_1_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
       cl_w = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_WRITE, CL_CHANNEL_2_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
 
       cl_g1 = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_3_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
       cl_g2 = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_4_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
       cl_g3 = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_1_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
       cl_g4 = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_2_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
       cl_g5 = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_3_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
       cl_g6 = clCreateBuffer(context, 
      $      ior(CL_MEM_READ_ONLY, CL_CHANNEL_4_INTELFPGA),
-     $      byte_size2,C_NULL_PTR, err)
+     $      byte_size,C_NULL_PTR, err)
       if (err.ne.0) stop 'clCreateBuffer'
  
       cl_dxm1 = clCreateBuffer(context, 
@@ -519,7 +518,7 @@ c Init arrays
       if (err.ne.0) stop 'clSetKernelArg'
       err=clSetKernelArg(ax_kernel,9,sizeof(cl_dxtm1),C_LOC(cl_dxtm1))
       if (err.ne.0) stop 'clSetKernelArg'
-      err=clSetKernelArg(ax_kernel,10,sizeof(n),C_LOC(n2))
+      err=clSetKernelArg(ax_kernel,10,sizeof(n),C_LOC(n))
       if (err.ne.0) stop 'clSetKernelArg'
  
       globalsize=int(n,8)
@@ -532,20 +531,9 @@ c Init arrays
          g5(i+1) = g(5 + 6*i)
          g6(i+1) = g(6 + 6*i)
       enddo 
-      pap = 0.0
-c     set machine tolerances
-      one = 1.
-      eps = 1.e-20
-      if (one+eps .eq. one) eps = 1.e-14
-      if (one+eps .eq. one) eps = 1.e-7
-      rtz1=1.0
-      miter = niter
-!      call rzero(x,n)
-!      call copy (r,f,n)
-!      call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
-!      rnorm = sqrt(glsc3(r,c,r,n))
+      call rone(p,n)
       iter = 0
-      if (nid.eq.0)  write(6,6) iter,rnorm
+      if (nid.eq.0)  write(6,6) iter
       err=clEnqueueWriteBuffer(cmd_queue,cl_w,CL_TRUE,0_8,
      $    byte_size,C_LOC(w), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
@@ -578,87 +566,312 @@ c     set machine tolerances
       err=clEnqueueWriteBuffer(cmd_queue,cl_dxtm1,CL_TRUE,0_8,
      $    element_size,C_LOC(dxtm1), 0,C_NULL_PTR,C_NULL_PTR)
       if (err.ne.0) stop 'clEnqueueWriteBuffer'
-c     call tester(z,r,n)  
       call set_timer_flop_cnt(0)
 
-      do iter=1,miter
-         !call solveM(z,r,n)    ! preconditioner here
-
-         !rtz2=rtz1                                                       ! OPS
-         !rtz1=glsc3(r,c,z,n)   ! parallel weighted inner product r^T C z ! 3n
-
-         !beta = rtz1/rtz2
-         !if (iter.eq.1) beta=0.0
-         !call add2s1(p,z,beta,n)                                         ! 2n
+      do iter=1,niter
          err=clEnqueueTask(cmd_queue,ax_kernel,
      $    0,C_NULL_PTR,C_NULL_PTR)
          if (err.ne.0) stop 'clEnqueueEnqueueTask'
-         !if ((iter mod 100) == 0) call power(platform_ids,device_ids)
-!         err=clEnqueueNDRangeKernel(cmd_queue,ax_kernel,
-!     $    1,C_NULL_PTR,C_LOC(globalsize),C_LOC(localsize),
-!     $    0,C_NULL_PTR,C_NULL_PTR)
-!         if (err.ne.0) stop 'clEnqueueEnqueueNDRange'
-        
-!         err = clEnqueueReadBuffer(cmd_queue,cl_w,CL_TRUE,
-!     $      0_8,byte_size,C_LOC(w),0,C_NULL_PTR,C_NULL_PTR)
-!         if (err.ne.0) stop 'clEnqueueReadBuffer'
-         !print *, g(n*6-4:n*6) 
-!         err=clFinish(cmd_queue)
-!         if (err.ne.0) stop 'clFinish'
-         !call ax_fpga(w,p,g,ur,us,ut,wk,n)                                    ! flopa
- 
-!         call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
-                                                              !            L
-!         err=clEnqueueWriteBuffer(cmd_queue,cl_w,CL_TRUE,0_8,
-!     $    byte_size,C_LOC(w), 0,C_NULL_PTR,C_NULL_PTR)
-!         if (err.ne.0) stop 'clEnqueueWriteBuffer'
-         !call add2s2(w,p,.1,n)   !2n
-         !call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
-   
-
-c         if (err.ne.0) stop 'clEnqueueNDRangeKernel'
-!         err=clFinish(cmd_queue)
-!         if (err.ne.0) stop 'clFinish'
-!         err=clEnqueueTask(cmd_queue,kernel,
-!     $    0,C_NULL_PTR,C_NULL_PTR)
-!         if (err.ne.0) stop 'clEnqueueEnqueueTask'
-         !pap=glsc3(w,c,p,n)                                              ! 3n
-
-         !alpha=rtz1/pap
-         !alphm=-alpha
- 
-         !call add2s2(x,p,alpha,n)                                        ! 2n
-         !call add2s2(r,w,alphm,n)                                        ! 2n
-         
-         !rtr = glsc3(r,c,r,n)                                            ! 3n
-         
-!         err = clEnqueueReadBuffer(cmd_queue,cl_rtr,CL_TRUE,
-!     $      0_8,8_8,C_LOC(rtr),0,C_NULL_PTR,C_NULL_PTR)
-!         if (err.ne.0) stop 'clEnqueueReadBuffer'
-!         err=clFinish(cmd_queue)
-!         if (err.ne.0) stop 'clFinish'
-!         
-!         if (iter.eq.1) rlim2 = rtr*eps**2
-!         if (iter.eq.1) rtr0  = rtr
-!         rnorm = sqrt(rtr)
-c        if (nid.eq.0.and.mod(iter,100).eq.0) 
-c    $      write(6,6) iter,rnorm,alpha,beta,pap
     6    format('cg:',i4,1p4e12.4)
-c        if (rtr.le.rlim2) goto 1001
-
       enddo
-      call power(platform_ids,device_ids)
 
  1001 continue
       nxyz=nx1*ny1*nz1
       flop_a = flop_a 
      $       + (dble(15) * dble(nxyz) + dble(12) *dble(nx1)* dble(nxyz))
-     $       * dble(nelt) * dble(miter)
-      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
+     $       * dble(nelt) * dble(niter)
+      if (nid.eq.0) write(6,6) iter
       err=clFinish(cmd_queue)
       if (err.ne.0) stop 'clFinish'
+      call set_timer_flop_cnt(1)
       err = clReleaseCommandQueue(cmd_queue) 
       err = clReleaseContext(context)  
+      err = clReleaseMemObject(cl_p)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_w)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g1)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g2)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g3)
+      call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g4)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g5)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_g6)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_dxm1)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_dxtm1)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      return
+      end
+c      ---------------------------------------------------------------
+      subroutine cg_fpga(x,f,g,c,r,w,p,z,n,niter,
+     $                   flop_cg,flop_a,file_name)
+      use clfortran
+      use clroutines
+      use ISO_C_BINDING  
+      include 'SIZE'
+      include 'DXYZ'
+c     Solve Ax=f where A is SPD and is invoked by ax()
+c
+c     Output:  x - vector of length n
+c
+c     Input:   f - vector of length n
+c     Input:   g - geometric factors for SEM operator
+c     Input:   c - inverse of the counting matrix
+c
+c     Work arrays:   r,w,p,z  - vectors of length n
+c
+c     User-provided ax(w,z,n) returns  w := Az,  
+c
+c     User-provided solveM(z,r,n) ) returns  z := M^-1 r,  
+c
+      real, target :: cmask
+      common /mymask/cmask(-1:lx1*ly1*lz1*lelt)
+      parameter (lt=lx1*ly1*lz1*lelt)
+      real ur(lt),us(lt),ut(lt),wk(lt)
+
+     
+c   Target necessary for OpenCL
+      real, target :: x(n),f(n),r(n),w(n),p(n),z(n),g(6*n),c(n),
+     $ dxm1,dxtm1, g1(n), g2(n), g3(n), g4(n), g5(n), g6(n)
+!      real x(n),f(n),r(n),w(n),p(n),z(n),g(1),c(n)
+      integer(c_intptr_t), target ::
+     $ cl_x,cl_f,cl_r1,cl_w,cl_p,cl_z,cl_g,cl_c,cl_rtr, cl_rtz1,
+     $ cl_dxm1, cl_dxtm1, cl_ur, cl_us, cl_ut, cl_wk, cl_cmask,
+     $ cl_g1, cl_g2, cl_g3, cl_g4, cl_g5, cl_g6
+      integer, target :: n, iter
+      character*1 ans
+c OPencl things
+      integer(c_size_t) :: byte_size, element_size, ret, g_size
+      integer(c_int32_t) :: err
+      character(len=1024) :: options, kernel_name, file_name
+      character(len=1, kind=c_char),allocatable :: kernel_str(:)
+      !integer, target :: np
+      integer(c_size_t),target :: globalsize, length
+      integer(c_size_t),target :: localsize(3)
+      integer(c_intptr_t), target :: 
+     $ cmd_queue,prog,context,ax_kernel,binary_status
+      integer(c_intptr_t), allocatable, target :: 
+     $ platform_ids(:), device_ids(:)
+      integer :: iplatform
+      integer(c_int) :: num_platforms
+      integer :: idevice 
+      integer :: filesize 
+      character(len=1,kind=c_char), allocatable, target :: binary(:)
+      character(len=1,kind=c_char), target :: c_kernel_name(1:1024)
+      type(c_ptr), target :: psource
+      real, target ::  rtr, rtz1
+      kernel_name = "ax"
+      idevice = 1
+      iplatform = 2
+      byte_size= 8_8 * int(n,8)
+      g_size= 8_8 * int(6*n,8)
+      element_size = 8_8*int(lx1*ly1,8)
+
+  
+      call create_device_context(iplatform, platform_ids,
+     $                           device_ids, context, cmd_queue)
+      call query_platform_info(platform_ids(iplatform))
+      call read_file(file_name,binary,filesize)
+      length = filesize
+      psource = C_LOC(binary)
+      prog = clCreateProgramWithBinary(
+     $ context,1, C_LOC(device_ids(idevice)),
+     $ C_LOC(length),C_LOC(psource),C_NULL_PTR,err)
+    
+      err=clBuildProgram(prog,
+     $ 0, C_NULL_PTR,C_NULL_PTR,C_NULL_FUNPTR,C_NULL_PTR)
+     
+      irec=len(trim(kernel_name))
+      do i=1,irec
+         c_kernel_name(i)=kernel_name(i:i)
+      enddo
+      c_kernel_name(irec+1)=C_NULL_CHAR
+      ax_kernel=clCreateKernel(prog,C_LOC(c_kernel_name),err)
+      if (err.ne.0) stop 'clCreateKernel'
+      
+
+      err = clReleaseProgram(prog)
+      if (err.ne.0) stop 'clReleaseProgram'
+c Init arrays
+      cl_p = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_w = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+
+
+      cl_g1 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g2 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g3 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g4 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g5 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_g6 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,byte_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      
+ 
+      cl_dxm1 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,element_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+      cl_dxtm1 = clCreateBuffer(context, 
+     $      CL_MEM_READ_WRITE,element_size,C_NULL_PTR, err)
+      if (err.ne.0) stop 'clCreateBuffer'
+    
+ 
+
+      err=clSetKernelArg(ax_kernel,0,sizeof(8_8),C_LOC(cl_w))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,1,sizeof(8_8),C_LOC(cl_p))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,2,sizeof(8_8),C_LOC(cl_g1))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,3,sizeof(8_8),C_LOC(cl_g2))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,4,sizeof(8_8),C_LOC(cl_g3))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,5,sizeof(8_8),C_LOC(cl_g4))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,6,sizeof(8_8),C_LOC(cl_g5))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,7,sizeof(8_8),C_LOC(cl_g6))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,8,sizeof(8_8),C_LOC(cl_dxm1))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,9,sizeof(8_8),C_LOC(cl_dxtm1))
+      if (err.ne.0) stop 'clSetKernelArg'
+      err=clSetKernelArg(ax_kernel,10,sizeof(8_4),C_LOC(n))
+      if (err.ne.0) stop 'clSetKernelArg'
+     
+ 
+      globalsize=int(n,8)
+      localsize=(/int(8,8),int(8,8),int(8,8)/)
+      do i=0,n-1
+         g1(i+1) = g(1 + 6*i)
+         g2(i+1) = g(2 + 6*i)
+         g3(i+1) = g(3 + 6*i)
+         g4(i+1) = g(4 + 6*i)
+         g5(i+1) = g(5 + 6*i)
+         g6(i+1) = g(6 + 6*i)
+      enddo 
+      pap = 0.0
+c     set machine tolerances
+      one = 1.
+      eps = 1.e-20
+      if (one+eps .eq. one) eps = 1.e-14
+      if (one+eps .eq. one) eps = 1.e-7
+      rtz1=1.0
+      miter = niter
+      call rzero(x,n)
+      call copy (r,f,n)
+      call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
+      rnorm = sqrt(glsc3(r,c,r,n))
+      iter = 0
+      if (nid.eq.0)  write(6,6) iter,rnorm
+
+
+      err=clEnqueueWriteBuffer(cmd_queue,cl_w,CL_TRUE,0_8,
+     $    byte_size,C_LOC(w), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_p,CL_TRUE,0_8,
+     $    byte_size,C_LOC(p), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g1,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g1), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g2,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g2), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g3,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g3), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g4,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g4), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g5,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g5), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_g6,CL_TRUE,0_8,
+     $    byte_size,C_LOC(g6), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+
+      
+      err=clEnqueueWriteBuffer(cmd_queue,cl_dxm1,CL_TRUE,0_8,
+     $    element_size,C_LOC(dxm1), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+      err=clEnqueueWriteBuffer(cmd_queue,cl_dxtm1,CL_TRUE,0_8,
+     $    element_size,C_LOC(dxtm1), 0,C_NULL_PTR,C_NULL_PTR)
+      if (err.ne.0) stop 'clEnqueueWriteBuffer'
+c     call tester(z,r,n)  
+      do iter=1,miter
+         call solveM(z,r,n)    ! preconditioner here
+
+         rtz2=rtz1                                                       ! OPS
+         rtz1=glsc3(r,c,z,n)   ! parallel weighted inner product r^T C z ! 3n
+         beta = rtz1/rtz2
+         if (iter.eq.1) beta=0.0
+         call add2s1(p,z,beta,n)                                         ! 2n
+         err=clEnqueueWriteBuffer(cmd_queue,cl_p,CL_TRUE,0_8,
+     $    byte_size,C_LOC(p), 0,C_NULL_PTR,C_NULL_PTR)
+         if (err.ne.0) stop 'clEnqueueWriteBuffer'
+         
+         err=clEnqueueTask(cmd_queue,ax_kernel,
+     $    0,C_NULL_PTR,C_NULL_PTR)
+         if (err.ne.0) stop 'clEnqueueEnqueueTask'
+        
+         err = clEnqueueReadBuffer(cmd_queue,cl_w,CL_TRUE,
+     $      0_8,byte_size,C_LOC(w),0,C_NULL_PTR,C_NULL_PTR)
+         if (err.ne.0) stop 'clEnqueueReadBuffer'
+         err=clFinish(cmd_queue)
+         if (err.ne.0) stop 'clFinish'
+         call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
+                                                              !            L
+         call add2s2(w,p,.1,n)   !2n
+         call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
+   
+
+         pap=glsc3(w,c,p,n)                                              ! 3n
+         alpha=rtz1/pap
+         alphm=-alpha
+         call add2s2(x,p,alpha,n)                                        ! 2n
+         call add2s2(r,w,alphm,n)                                        ! 2n
+         
+         rtr = glsc3(r,c,r,n)                                            ! 3n
+         
+         if (iter.eq.1) rlim2 = rtr*eps**2
+         if (iter.eq.1) rtr0  = rtr
+         rnorm = sqrt(rtr)
+    6    format('cg:',i4,1p4e12.4)
+
+      enddo
+
+ 1001 continue
+      nxyz=nx1*ny1*nz1
+      if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
+      flop_a = flop_a 
+     $       + (dble(15) * dble(nxyz) + dble(12) *dble(nx1)* dble(nxyz))
+     $       * dble(nelt) * dble(miter)
+      flop_cg = flop_cg + dble(17)*dble(miter)*dble(n)
+      err=clFinish(cmd_queue)
+      if (err.ne.0) stop 'clFinish'
       err = clReleaseMemObject(cl_p)
       if (err.ne.0) stop 'clRelasseMemObj'
       err = clReleaseMemObject(cl_w)
@@ -675,32 +888,15 @@ c        if (rtr.le.rlim2) goto 1001
       if (err.ne.0) stop 'clRelasseMemObj'
       err = clReleaseMemObject(cl_g6)
       if (err.ne.0) stop 'clRelasseMemObj'
-      call set_timer_flop_cnt(1)
-      return
-      end
-c      ---------------------------------------------------------------
-
-      subroutine ax_fpga(w,u,gxyz,ur,us,ut,wk,n) ! Matrix-vector product: w=A*u
-
-      include 'SIZE'
-      include 'TOTAL'
-
-      real w(nx1*ny1*nz1,nelt),u(nx1*ny1*nz1,nelt)
-      real gxyz(2*ldim,nx1*ny1*nz1,nelt)
-
-      parameter (lt=lx1*ly1*lz1*lelt)
-      real ur(lt),us(lt),ut(lt),wk(lt)
-      common /mymask/cmask(-1:lx1*ly1*lz1*lelt)
-
-      integer e
-
-
-      do e=1,nelt                                ! ~
-         call ax_e( w(1,e),u(1,e),gxyz(1,1,e)    ! w   = A  u
-     $                             ,ur,us,ut,wk) !  L     L  L
-      enddo                                      ! 
+      err = clReleaseMemObject(cl_dxm1)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseMemObject(cl_dxtm1)
+      if (err.ne.0) stop 'clRelasseMemObj'
+      err = clReleaseCommandQueue(cmd_queue) 
+      err = clReleaseContext(context)  
+ 
       return
       end
 
 
-#endif FPGA
+#endif 

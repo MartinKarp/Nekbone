@@ -10,6 +10,7 @@ c-----------------------------------------------------------------------
       parameter (lxyz = lx1*ly1*lz1)
       parameter (lt=lxyz*lelt)
 
+      character(len=1024) :: file_name
       real,allocatable :: x(:),f(:),r(:),w(:),p(:),z(:),c(:)
       real, allocatable :: g(:,:)
       real mfloplist(1024), avmflop
@@ -33,7 +34,7 @@ c     iverbose = 1
 c     call platform_timer(iverbose)   ! iverbose=0 or 1
 
       icount = 0
-
+      call getarg(1,file_name)
 c     SET UP and RUN NEKBONE
       do nx1=nx0,nxN,nxD
          call init_dim
@@ -45,32 +46,20 @@ c     SET UP and RUN NEKBONE
 
            call proxy_setup(ah,bh,ch,dh,zh,wh,g) 
            call h1mg_setup
-           niter = 100
+           niter = 10000
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
 
            if(nid.eq.0) write(6,*)
-#ifdef FPGA          
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-#else
-           call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-#endif
            call nekgsync()
+           call ax_fpga(x,f,g,c,r,w,p,z,n,niter,
+     $                  flop_cg,flop_a,file_name)
 
-#ifdef FPGA          
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,flop_cg,flop_a)
-#else
-           call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
-#endif           
+!           call set_timer_flop_cnt(0)
+!           call cg_fpga(x,f,g,c,r,w,p,z,n,niter,
+!     $                  flop_cg,flop_a,file_name)
+!           call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
            
