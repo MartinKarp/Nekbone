@@ -103,7 +103,7 @@ all : nekbone
 objdir: 
 	@mkdir $(OBJDIR) 2>/dev/null; cat /dev/null 
 
-nekbone: 	objdir $(NOBJS0_bone)
+nekbone: clfortran objdir $(NOBJS0_bone) 
 	$(F77) -o ${BINNAME} $G $(NOBJS0_bone) $(lFLAGS)
 	@if test -f ${BINNAME}; then \
 	echo "#############################################################"; \
@@ -119,15 +119,16 @@ ifeq ($(IFMPI),false)
 	@rm -rf $S/mpif.h
 endif
 
+clfortran: 
+	$(F77) $S/clfortran.f90 -c -J$S $< 
+	$(F77) $S/clroutines.f90 -c -J$S $< 
+
 clean:
 	rm -rf ./obj ${BINNAME}
 
 $(NOBJS_Fbon) : SIZE
-# clfortran       ############################################################################
-clfortran.o :$S/clfortran.f90;		$(F77) -c -J$S $< 
-# opencl fpga     ############################################################################
-$(OBJDIR)/clroutines.o:  $S/clroutines.f90;		$(F77) -c -J$S $<  -o $@ 
 # CORE      ############################################################################
+$(OBJDIR)/clroutines.o:  $S/clroutines.f90;		$(F77) -c -J$S $<  -o $@ 
 $(OBJDIR)/cg.o          :$S/cg.f $S/clfortran.f90 $S/clroutines.f90;      $(F77) -c $(FL4) $< -o $@ 
 $(OBJDIR)/prox_dssum.o  :$S/prox_dssum.f;               $(F77) -c $(FL2) $< -o $@
 $(OBJDIR)/prox_setup.o  :$S/prox_setup.f;               $(F77) -c $(FL4) $< -o $@
