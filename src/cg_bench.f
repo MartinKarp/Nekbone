@@ -539,7 +539,7 @@ c     set machine tolerances
       miter = niter
 !      call rzero(x,n)
 !      call copy (r,f,n)
-!      call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
+      call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
 !      rnorm = sqrt(glsc3(r,c,r,n))
       iter = 0
       if (nid.eq.0)  write(6,6) iter,rnorm
