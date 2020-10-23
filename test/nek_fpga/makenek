@@ -27,11 +27,10 @@ CC="mpicc"
 #USR="foo.o"
 
 # linking flags
-USR_LFLAGS="-L/cm/shared/opt/intelFPGA_pro/20.2.0/hld/host/linux64/lib -L/cm/shared/opt/intelFPGA_pro/19.4.0/hld/board/bittware_pcie/s10/linux64/lib -L/cm/shared/opt/intelFPGA_pro/20.2.0/hld/host/linux64/lib -Wl,--no-as-needed -lalteracl -lbitt_s10_pcie_mmd -lelf"
- 
-# generic compiler flags
-G="-cpp -DFPGA -L/usr/lib64 -lOpenCL -mcmodel=medium -I/cm/shared/opt/intelFPGA_pro/20.2.0/hld/host/include"
+USR_LFLAGS="-L/cm/shared/opt/intelFPGA_pro/20.2.0/hld/host/linux64/lib -lOpenCL"
 
+# generic compiler flags
+G="-cpp -DFPGA -L/usr/lib64 -lOpenCL"
 # optimization flags
 #OPT_FLAGS_STD=""
 #OPT_FLAGS_MAG=""
